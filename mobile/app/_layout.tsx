@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import mobileAds from "react-native-google-mobile-ads";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
+import { isExpoGo } from "@/lib/ads";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 
-mobileAds().initialize();
+if (!isExpoGo) {
+  // Expo Go bu native modülü desteklemediği için yalnızca gerçek build'lerde yüklenir.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require("react-native-google-mobile-ads").default().initialize();
+}
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);

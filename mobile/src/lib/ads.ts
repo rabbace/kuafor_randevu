@@ -1,5 +1,9 @@
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { TestIds } from "react-native-google-mobile-ads";
+
+// Expo Go, AdMob gibi özel native modülleri desteklemez (yalnızca geliştirme/üretim build'lerinde çalışır).
+export const isExpoGo = Constants.appOwnership === "expo";
 
 // Üretimde gerçek AdMob unit ID'lerini buraya (veya .env üzerinden) koy.
 // Geliştirme sırasında her zaman test ID'leri kullanılır.

@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kuaforrandevu.app",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~iosAppId",
+        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~1458002511",
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
       }
     },
@@ -28,7 +28,7 @@
       },
       "package": "com.kuaforrandevu.app",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~androidAppId",
+        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~3347511713",
         "googleMaps": {
           "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
         }
@@ -47,8 +47,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~androidAppId",
-          "iosAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~iosAppId"
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ]
     ],

@@ -1,0 +1,26 @@
+project_id = "kuafor-randevu"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["kuaforrandevu://auth-callback", "exp://127.0.0.1:19000/--/auth-callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_CLIENT_ID)"
+secret = "env(APPLE_CLIENT_SECRET)"
+
+[db]
+port = 54322
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]

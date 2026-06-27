@@ -74,7 +74,8 @@ Migration geçmişi: `0001_init.sql` → `0002_rls.sql` → `0003_auth_trigger.s
 ## 10. Tasarım Sistemi
 
 - **Web paneli:** Sidebar + Topbar dashboard layout, `Logo`/`Button`/`Card`/`Badge` bileşenleri, avatar baş harfleri, durum etiketleri (Badge renkleri).
-- **Mobil:** Merkezi renk paleti (`src/theme/colors.ts`), tema store üzerinden tüm ekranlara uygulanır.
+- **Mobil:** Merkezi renk paleti (`src/theme/colors.ts`), tema store üzerinden tüm ekranlara uygulanır. Tab bar ve ekran başlıkları ikonlu (`@expo/vector-icons`), kartlarda gölge (`src/theme/shadows.ts`), avatar baş harfleri, renkli durum rozetleri (Keşfet/Randevularım/Profil ekranları).
+- **Web giriş:** `web/app/login/page.tsx` hem e-posta/şifre (`signInWithPassword`) hem Google/Apple SSO ile giriş sunar — OAuth sağlayıcıları henüz canlı Supabase projesinde ayarlanmadığı için e-posta/şifre birincil giriş yoludur.
 
 ## 11. Özel Modüller
 

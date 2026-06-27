@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
+import { cardShadow } from "@/theme/shadows";
 import { AdBanner } from "@/components/ads/AdBanner";
 import { ContactButtons } from "@/components/contact/ContactButtons";
 import type { Appointment, Barber, Service } from "@/types/database";
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Onay Bekliyor",
-  confirmed: "Onaylandı",
-  rejected: "Reddedildi",
-  cancelled: "İptal Edildi",
-  completed: "Tamamlandı",
-  no_show: "Gelmedi",
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: "Onay Bekliyor", color: "#B45309", bg: "#FEF3C7" },
+  confirmed: { label: "Onaylandı", color: "#15803D", bg: "#DCFCE7" },
+  rejected: { label: "Reddedildi", color: "#B91C1C", bg: "#FEE2E2" },
+  cancelled: { label: "İptal Edildi", color: "#52525B", bg: "#E4E4E7" },
+  completed: { label: "Tamamlandı", color: "#1D4ED8", bg: "#DBEAFE" },
+  no_show: { label: "Gelmedi", color: "#B91C1C", bg: "#FEE2E2" },
 };
 
 export default function AppointmentsScreen() {
@@ -64,7 +66,8 @@ export default function AppointmentsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {isBarber && barber && (
         <Pressable style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={() => setIsModalOpen(true)}>
-          <Text style={styles.addButtonText}>+ Dışarıdan Randevu Ekle</Text>
+          <Ionicons name="add-circle-outline" size={18} color="#fff" />
+          <Text style={styles.addButtonText}>Dışarıdan Randevu Ekle</Text>
         </Pressable>
       )}
 
@@ -72,21 +75,50 @@ export default function AppointmentsScreen() {
         data={appointments}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
-        renderItem={({ item }) => (
-          <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <Text style={[styles.date, { color: colors.text }]}>
-              {new Date(item.start_time).toLocaleString("tr-TR")}
+        renderItem={({ item }) => {
+          const meta = STATUS_META[item.status];
+          const start = new Date(item.start_time);
+          return (
+            <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.date, { color: colors.text }]}>
+                    {start.toLocaleDateString("tr-TR", { day: "2-digit", month: "long" })}
+                  </Text>
+                  <Text style={[styles.time, { color: colors.textMuted }]}>
+                    {start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: meta?.bg ?? colors.border }]}>
+                  <Text style={[styles.badgeText, { color: meta?.color ?? colors.textMuted }]}>
+                    {meta?.label ?? item.status}
+                  </Text>
+                </View>
+              </View>
+
+              {item.is_manual_entry && (
+                <View style={styles.manualRow}>
+                  <Ionicons name="create-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.manualBadge, { color: colors.primary }]}>
+                    Elden Girildi · {item.manual_customer_name}
+                    {item.manual_customer_phone ? ` (${item.manual_customer_phone})` : ""}
+                  </Text>
+                </View>
+              )}
+
+              {!isBarber && barber?.whatsapp_phone && <ContactButtons phone={barber.whatsapp_phone} />}
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={40} color={colors.textMuted} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz randevu yok</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              {isBarber ? "Gelen randevular burada listelenecek." : "Bir berber bularak randevu alabilirsin."}
             </Text>
-            <Text style={[styles.status, { color: colors.textMuted }]}>{STATUS_LABELS[item.status]}</Text>
-            {item.is_manual_entry && (
-              <Text style={[styles.manualBadge, { color: colors.primary }]}>
-                Elden Girildi · {item.manual_customer_name} {item.manual_customer_phone ? `(${item.manual_customer_phone})` : ""}
-              </Text>
-            )}
-            {!isBarber && barber?.whatsapp_phone && <ContactButtons phone={barber.whatsapp_phone} />}
           </View>
-        )}
-        ListEmptyComponent={<Text style={[styles.empty, { color: colors.textMuted }]}>Henüz randevu yok.</Text>}
+        }
       />
       <AdBanner />
 
@@ -160,7 +192,12 @@ function ManualAppointmentModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>Dışarıdan Randevu Ekle</Text>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Dışarıdan Randevu Ekle</Text>
+            <Pressable onPress={onClose}>
+              <Ionicons name="close" size={22} color={colors.textMuted} />
+            </Pressable>
+          </View>
 
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
@@ -223,17 +260,33 @@ function ManualAppointmentModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  addButton: { margin: 16, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  addButton: {
+    flexDirection: "row",
+    gap: 8,
+    margin: 16,
+    marginBottom: 4,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   addButtonText: { color: "#fff", fontWeight: "600" },
-  card: { borderWidth: 1, borderRadius: 12, padding: 16, gap: 8 },
-  date: { fontWeight: "600", marginBottom: 4 },
-  status: {},
+  card: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  date: { fontWeight: "700", fontSize: 15 },
+  time: { fontSize: 13, marginTop: 2 },
+  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+  manualRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   manualBadge: { fontSize: 12, fontWeight: "600" },
-  empty: { textAlign: "center", marginTop: 40 },
+  emptyState: { alignItems: "center", paddingTop: 80, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: "700" },
+  emptyText: { fontSize: 13, textAlign: "center" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 },
-  modalCard: { borderRadius: 16, padding: 20, gap: 10 },
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  modalCard: { borderRadius: 20, padding: 22, gap: 10 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
   serviceRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   serviceChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },

@@ -1,4 +1,5 @@
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "@/store/useThemeStore";
 
 function normalizePhone(phone: string): string {
@@ -27,16 +28,15 @@ export function ContactButtons({ phone }: { phone: string | null | undefined }) 
 
   return (
     <View style={styles.row}>
-      <Pressable
-        style={[styles.button, { backgroundColor: "#25D366" }]}
-        onPress={openWhatsApp}
-      >
-        <Text style={styles.buttonText}>WhatsApp'tan Yaz</Text>
+      <Pressable style={[styles.button, { backgroundColor: "#25D366" }]} onPress={openWhatsApp}>
+        <Ionicons name="logo-whatsapp" size={17} color="#fff" />
+        <Text style={styles.buttonText}>WhatsApp</Text>
       </Pressable>
       <Pressable
         style={[styles.button, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
         onPress={openSms}
       >
+        <Ionicons name="chatbubble-outline" size={16} color={colors.text} />
         <Text style={[styles.buttonText, { color: colors.text }]}>SMS Gönder</Text>
       </Pressable>
     </View>
@@ -45,6 +45,14 @@ export function ContactButtons({ phone }: { phone: string | null | undefined }) 
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 10 },
-  button: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  buttonText: { fontWeight: "600", color: "#fff" },
+  button: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: { fontWeight: "600", color: "#fff", fontSize: 13 },
 });

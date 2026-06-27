@@ -1,17 +1,42 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const supabase = createClient();
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function signInWith(provider: "google" | "apple") {
     await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}/dashboard/appointments` },
     });
+  }
+
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage("E-posta veya şifre hatalı.");
+      return;
+    }
+
+    router.push("/dashboard/appointments");
   }
 
   return (
@@ -25,23 +50,56 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-6 shadow-card">
-          <Button
-            variant="secondary"
-            className="w-full gap-3"
-            onClick={() => signInWith("google")}
-          >
-            <GoogleIcon />
-            Google ile Giriş Yap
-          </Button>
-          <Button
-            variant="secondary"
-            className="w-full gap-3"
-            onClick={() => signInWith("apple")}
-          >
-            <AppleIcon />
-            Apple ile Giriş Yap
-          </Button>
+        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-card">
+          <form className="space-y-3" onSubmit={handleEmailLogin}>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-neutral-600">E-posta</label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                placeholder="ornek@salon.com"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-neutral-600">Şifre</label>
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {errorMessage && <p className="text-xs text-red-600">{errorMessage}</p>}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
+            </Button>
+          </form>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-neutral-200" />
+            <span className="text-xs text-neutral-400">veya</span>
+            <div className="h-px flex-1 bg-neutral-200" />
+          </div>
+
+          <div className="space-y-3">
+            <Button variant="secondary" className="w-full gap-3" onClick={() => signInWith("google")}>
+              <GoogleIcon />
+              Google ile Giriş Yap
+            </Button>
+            <Button variant="secondary" className="w-full gap-3" onClick={() => signInWith("apple")}>
+              <AppleIcon />
+              Apple ile Giriş Yap
+            </Button>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-neutral-400">

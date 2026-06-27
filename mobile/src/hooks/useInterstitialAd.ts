@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { isExpoGo, INTERSTITIAL_AD_UNIT_ID } from "@/lib/ads";
+import { isExpoGo, getInterstitialAdUnitId } from "@/lib/ads";
 
 /**
  * Randevu onaylandıktan sonra gösterilecek tam ekran reklam.
@@ -11,7 +11,7 @@ export function useInterstitialAd() {
   const adRef = useRef(
     isExpoGo
       ? null
-      : require("react-native-google-mobile-ads").InterstitialAd.createForAdRequest(INTERSTITIAL_AD_UNIT_ID)
+      : require("react-native-google-mobile-ads").InterstitialAd.createForAdRequest(getInterstitialAdUnitId())
   );
   const isLoadedRef = useRef(false);
 

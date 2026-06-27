@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { isExpoGo, BANNER_AD_UNIT_ID } from "@/lib/ads";
+import { isExpoGo, getBannerAdUnitId } from "@/lib/ads";
 
 /**
  * Müşteri uygulamasında ekran altlarına yerleştirilen reklam banner'ı.
@@ -13,7 +13,7 @@ export function AdBanner() {
   return (
     <View style={{ alignItems: "center" }}>
       <BannerAd
-        unitId={BANNER_AD_UNIT_ID}
+        unitId={getBannerAdUnitId()}
         size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
         requestOptions={{ requestNonPersonalizedAdsOnly: false }}
       />

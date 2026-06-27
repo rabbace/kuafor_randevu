@@ -88,15 +88,40 @@ export interface AppointmentWithRelations extends AppointmentRow {
 export interface Database {
   public: {
     Tables: {
-      users: { Row: UserRow; Insert: Partial<UserRow>; Update: Partial<UserRow> };
-      salons: { Row: SalonRow; Insert: Partial<SalonRow>; Update: Partial<SalonRow> };
-      barbers: { Row: BarberRow; Insert: Partial<BarberRow>; Update: Partial<BarberRow> };
-      services: { Row: ServiceRow; Insert: Partial<ServiceRow>; Update: Partial<ServiceRow> };
+      users: {
+        Row: UserRow;
+        Insert: Partial<UserRow>;
+        Update: Partial<UserRow>;
+        Relationships: [];
+      };
+      salons: {
+        Row: SalonRow;
+        Insert: Partial<SalonRow>;
+        Update: Partial<SalonRow>;
+        Relationships: [];
+      };
+      barbers: {
+        Row: BarberRow;
+        Insert: Partial<BarberRow>;
+        Update: Partial<BarberRow>;
+        Relationships: [];
+      };
+      services: {
+        Row: ServiceRow;
+        Insert: Partial<ServiceRow>;
+        Update: Partial<ServiceRow>;
+        Relationships: [];
+      };
       appointments: {
         Row: AppointmentRow;
         Insert: Partial<AppointmentRow>;
         Update: Partial<AppointmentRow>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

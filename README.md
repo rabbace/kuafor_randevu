@@ -28,4 +28,36 @@ supabase link --project-ref <PROJECT_REF>
 supabase db push
 ```
 
-Sıradaki adımlar: Next.js yönetim paneli, Expo mobil uygulama, slot hesaplama algoritması, push notification ve AdMob entegrasyonu.
+## Adım 2 — Next.js Web Yönetim Paneli (tamamlandı)
+
+```
+web/
+├── app/
+│   ├── layout.tsx, globals.css
+│   ├── login/page.tsx              # Google/Apple SSO girişi
+│   ├── actions/appointments.ts     # Server Actions: onay/red, çalışan ekleme
+│   └── dashboard/
+│       ├── appointments/page.tsx   # Randevu onay/red listesi
+│       └── employees/page.tsx      # Çalışan listesi + ekleme formu
+├── components/
+│   ├── appointments/AppointmentApprovalCard.tsx
+│   └── employees/AddEmployeeForm.tsx
+├── lib/
+│   ├── supabase/{client,server}.ts
+│   ├── store/useSalonStore.ts      # Zustand
+│   └── types/database.ts
+├── middleware.ts                   # Oturum kontrolü, /dashboard koruması
+├── tailwind.config.ts, postcss.config.js, next.config.js
+└── package.json
+```
+
+Kurulum:
+
+```bash
+cd web
+npm install
+cp .env.example .env.local   # Supabase URL/anon key doldur
+npm run dev
+```
+
+Sıradaki adımlar: Expo mobil uygulama, slot hesaplama algoritması, push notification ve AdMob entegrasyonu.

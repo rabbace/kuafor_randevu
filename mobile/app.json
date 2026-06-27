@@ -56,8 +56,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "supabaseUrl": "https://your-project.supabase.co",
-      "supabaseAnonKey": "your-anon-key",
+      "supabaseUrl": "https://frzwlctzomhborhcxukd.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyendsY3R6b21oYm9yaGN4dWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjkzNTMsImV4cCI6MjA5ODE0NTM1M30.efoxtO29POXKGKpRlzP_Mgd9wulRJpYZnUA5rJkNsPY",
       "eas": {
         "projectId": "your-eas-project-id"
       }

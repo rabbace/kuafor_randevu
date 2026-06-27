@@ -60,4 +60,43 @@ cp .env.example .env.local   # Supabase URL/anon key doldur
 npm run dev
 ```
 
-Sıradaki adımlar: Expo mobil uygulama, slot hesaplama algoritması, push notification ve AdMob entegrasyonu.
+## Adım 3 — Expo Mobil Uygulama (tamamlandı)
+
+```
+mobile/
+├── app/
+│   ├── _layout.tsx              # onboarding -> auth -> tabs yönlendirme mantığı
+│   ├── onboarding/index.tsx     # kaydırmalı (swipe) tanıtım, AsyncStorage ile tek seferlik
+│   ├── (auth)/login.tsx         # e-posta + Google/Apple SSO
+│   └── (tabs)/
+│       ├── index.tsx            # Keşfet (salon listesi)
+│       ├── appointments.tsx     # Randevularım
+│       └── profile.tsx          # Profil + sadakat puanı + çıkış
+├── src/
+│   ├── lib/
+│   │   ├── supabase.ts          # AsyncStorage destekli Supabase client
+│   │   ├── slotCalculator.ts    # KRİTİK: slot hesaplama algoritması
+│   │   └── onboarding.ts
+│   ├── store/                   # Zustand: auth, theme, booking
+│   ├── components/{onboarding,booking}/
+│   └── types/database.ts
+├── app.json                     # AdMob app id, push notification plugin, deep link scheme
+└── package.json
+```
+
+### Slot Hesaplama Algoritması (`src/lib/slotCalculator.ts`)
+
+- `calculateFinalDuration(baseDuration, speedMultiplier)`: Temel Süre × Hız Çarpanı, en yakın 5 dakikaya yuvarlanır (örn. 30dk × 1.5 çırak = 45dk, 30dk × 0.8 usta = 25dk).
+- `generateDailySlots(...)`: Salon çalışma saatleri (veya berbere özel saatler) içinde, mevcut randevuların üstüne **tampon süresini (buffer)** ekleyerek çakışan slotları pasif (dolu) işaretler; boş slotlar dinamik olarak hesaplanan süreye göre seçilebilir kalır.
+
+Kurulum:
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+`app.json` içindeki `extra.supabaseUrl` / `extra.supabaseAnonKey` ve AdMob app id'lerini doldurman gerekiyor.
+
+Sıradaki adım: Push notification (randevudan 2 saat önce hatırlatma) ve AdMob banner/interstitial entegrasyon kodları.

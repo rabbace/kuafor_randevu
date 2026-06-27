@@ -29,6 +29,10 @@ export interface Barber {
   title: string | null;
   speed_multiplier: number;
   auto_approve_appointments: boolean;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  whatsapp_phone: string | null;
 }
 
 export interface Service {
@@ -41,11 +45,14 @@ export interface Service {
 
 export interface Appointment {
   id: string;
-  customer_id: string;
+  customer_id: string | null;
   salon_id: string;
   barber_id: string;
   service_id: string;
   start_time: string; // ISO
   end_time: string; // ISO
   status: AppointmentStatus;
+  is_manual_entry: boolean;
+  manual_customer_name: string | null;
+  manual_customer_phone: string | null;
 }

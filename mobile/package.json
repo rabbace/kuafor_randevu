@@ -27,7 +27,8 @@
     "@supabase/supabase-js": "^2.45.4",
     "zustand": "^4.5.5",
     "react-native-url-polyfill": "^2.0.0",
-    "react-native-google-mobile-ads": "^14.6.0"
+    "react-native-google-mobile-ads": "^14.6.0",
+    "react-native-maps": "1.14.0"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",

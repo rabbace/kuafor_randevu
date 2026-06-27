@@ -9,7 +9,7 @@ export default async function AppointmentsPage() {
     .from("appointments")
     .select(
       `
-      id, customer_id, salon_id, barber_id, service_id, start_time, end_time, status, notes, created_at, updated_at,
+      id, customer_id, salon_id, barber_id, service_id, start_time, end_time, status, notes, is_manual_entry, manual_customer_name, manual_customer_phone, created_at, updated_at,
       customer:users!appointments_customer_id_fkey ( id, full_name, phone, avatar_url ),
       barber:barbers!appointments_barber_id_fkey ( id, title, user:users!barbers_user_id_fkey ( full_name ) ),
       service:services!appointments_service_id_fkey ( id, name, base_duration_minutes, price )

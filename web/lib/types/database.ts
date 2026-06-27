@@ -50,6 +50,10 @@ export interface BarberRow {
   speed_multiplier: number;
   auto_approve_appointments: boolean;
   is_active: boolean;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  whatsapp_phone: string | null;
   created_at: string;
 }
 
@@ -67,7 +71,7 @@ export interface ServiceRow {
 
 export interface AppointmentRow {
   id: string;
-  customer_id: string;
+  customer_id: string | null;
   salon_id: string;
   barber_id: string;
   service_id: string;
@@ -75,12 +79,15 @@ export interface AppointmentRow {
   end_time: string;
   status: AppointmentStatus;
   notes: string | null;
+  is_manual_entry: boolean;
+  manual_customer_name: string | null;
+  manual_customer_phone: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface AppointmentWithRelations extends AppointmentRow {
-  customer: Pick<UserRow, "id" | "full_name" | "phone" | "avatar_url">;
+  customer: Pick<UserRow, "id" | "full_name" | "phone" | "avatar_url"> | null;
   barber: Pick<BarberRow, "id" | "title"> & { user: Pick<UserRow, "full_name"> };
   service: Pick<ServiceRow, "id" | "name" | "base_duration_minutes" | "price">;
 }

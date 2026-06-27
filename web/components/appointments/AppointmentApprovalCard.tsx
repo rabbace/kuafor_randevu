@@ -37,6 +37,9 @@ export function AppointmentApprovalCard({
   const status = STATUS_LABELS[appointment.status];
   const start = new Date(appointment.start_time);
   const end = new Date(appointment.end_time);
+  const displayName = appointment.is_manual_entry
+    ? appointment.manual_customer_name
+    : appointment.customer?.full_name;
 
   function handleDecision(decision: "confirmed" | "rejected") {
     setErrorMessage(null);
@@ -51,14 +54,19 @@ export function AppointmentApprovalCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700">
-            {initialsOf(appointment.customer.full_name)}
+            {initialsOf(displayName ?? null)}
           </div>
           <div>
-            <p className="font-medium text-neutral-900">{appointment.customer.full_name ?? "Müşteri"}</p>
+            <p className="font-medium text-neutral-900">{displayName ?? "Müşteri"}</p>
             <p className="text-sm text-neutral-500">{appointment.service.name}</p>
           </div>
         </div>
-        <Badge className={status.color}>{status.label}</Badge>
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge className={status.color}>{status.label}</Badge>
+          {appointment.is_manual_entry && (
+            <Badge className="bg-neutral-100 text-neutral-600">Elden Girildi</Badge>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5 rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-neutral-600">
@@ -76,6 +84,19 @@ export function AppointmentApprovalCard({
             {appointment.barber.user.full_name ?? appointment.barber.title}
           </span>
         </div>
+        {(appointment.manual_customer_phone || appointment.customer?.phone) && (
+          <div className="flex items-center justify-between">
+            <span>Telefon</span>
+            <a
+              href={`https://wa.me/${(appointment.manual_customer_phone ?? appointment.customer?.phone ?? "").replace(/[^\d+]/g, "").replace(/^\+/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-green-700 hover:underline"
+            >
+              {appointment.manual_customer_phone ?? appointment.customer?.phone}
+            </a>
+          </div>
+        )}
       </div>
 
       {appointment.status === "pending" && (

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Kuaför Randevu | Yönetim Paneli",
@@ -9,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className={`${inter.variable} min-h-screen antialiased font-sans bg-neutral-50 text-neutral-900`}>
+        {children}
+      </body>
     </html>
   );
 }

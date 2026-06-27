@@ -3,16 +3,28 @@
 import { useState, useTransition } from "react";
 import clsx from "clsx";
 import { updateAppointmentStatus } from "@/app/actions/appointments";
+import { Button } from "@/components/ui/Button";
+import { Card, Badge } from "@/components/ui/Card";
 import type { AppointmentWithRelations } from "@/lib/types/database";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending: { label: "Onay Bekliyor", color: "bg-yellow-100 text-yellow-800" },
-  confirmed: { label: "Onaylandı", color: "bg-green-100 text-green-800" },
-  rejected: { label: "Reddedildi", color: "bg-red-100 text-red-800" },
-  cancelled: { label: "İptal Edildi", color: "bg-gray-100 text-gray-800" },
-  completed: { label: "Tamamlandı", color: "bg-blue-100 text-blue-800" },
-  no_show: { label: "Gelmedi", color: "bg-red-100 text-red-800" },
+  pending: { label: "Onay Bekliyor", color: "bg-amber-50 text-amber-700" },
+  confirmed: { label: "Onaylandı", color: "bg-green-50 text-green-700" },
+  rejected: { label: "Reddedildi", color: "bg-red-50 text-red-700" },
+  cancelled: { label: "İptal Edildi", color: "bg-neutral-100 text-neutral-600" },
+  completed: { label: "Tamamlandı", color: "bg-blue-50 text-blue-700" },
+  no_show: { label: "Gelmedi", color: "bg-red-50 text-red-700" },
 };
+
+function initialsOf(name: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export function AppointmentApprovalCard({
   appointment,
@@ -35,46 +47,54 @@ export function AppointmentApprovalCard({
   }
 
   return (
-    <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 flex flex-col gap-3 bg-white dark:bg-neutral-900">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-semibold">{appointment.customer.full_name ?? "Müşteri"}</p>
-          <p className="text-sm text-neutral-500">{appointment.service.name}</p>
+    <Card className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700">
+            {initialsOf(appointment.customer.full_name)}
+          </div>
+          <div>
+            <p className="font-medium text-neutral-900">{appointment.customer.full_name ?? "Müşteri"}</p>
+            <p className="text-sm text-neutral-500">{appointment.service.name}</p>
+          </div>
         </div>
-        <span className={clsx("text-xs px-2 py-1 rounded-full font-medium", status.color)}>
-          {status.label}
-        </span>
+        <Badge className={status.color}>{status.label}</Badge>
       </div>
 
-      <div className="text-sm text-neutral-600 dark:text-neutral-300">
-        <p>
-          {start.toLocaleDateString("tr-TR")} ·{" "}
-          {start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}–
-          {end.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
-        </p>
-        <p>Çalışan: {appointment.barber.user.full_name ?? appointment.barber.title}</p>
+      <div className="flex flex-col gap-1.5 rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-neutral-600">
+        <div className="flex items-center justify-between">
+          <span>Tarih / Saat</span>
+          <span className="font-medium text-neutral-900">
+            {start.toLocaleDateString("tr-TR")} ·{" "}
+            {start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}–
+            {end.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>Çalışan</span>
+          <span className="font-medium text-neutral-900">
+            {appointment.barber.user.full_name ?? appointment.barber.title}
+          </span>
+        </div>
       </div>
 
       {appointment.status === "pending" && (
-        <div className="flex gap-2 pt-1">
-          <button
-            disabled={isPending}
-            onClick={() => handleDecision("confirmed")}
-            className="flex-1 rounded-lg bg-primary text-white py-2 text-sm font-medium disabled:opacity-50"
-          >
+        <div className="flex gap-2">
+          <Button className="flex-1" disabled={isPending} onClick={() => handleDecision("confirmed")}>
             Onayla
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
             disabled={isPending}
             onClick={() => handleDecision("rejected")}
-            className="flex-1 rounded-lg border border-red-500 text-red-500 py-2 text-sm font-medium disabled:opacity-50"
           >
             Reddet
-          </button>
+          </Button>
         </div>
       )}
 
-      {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
-    </div>
+      {errorMessage && <p className="text-xs text-red-600">{errorMessage}</p>}
+    </Card>
   );
 }

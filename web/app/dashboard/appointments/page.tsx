@@ -26,18 +26,20 @@ export default async function AppointmentsPage() {
   const others = list.filter((a) => a.status !== "pending");
 
   return (
-    <main className="p-6 space-y-8 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-8">
       <header>
-        <h1 className="text-2xl font-bold">Randevular</h1>
+        <h1 className="text-2xl font-semibold text-neutral-900">Randevular</h1>
         <p className="text-sm text-neutral-500">Onay bekleyen randevuları yönetin.</p>
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Onay Bekleyenler ({pending.length})</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+          Onay Bekleyenler ({pending.length})
+        </h2>
         {pending.length === 0 && (
           <p className="text-sm text-neutral-500">Onay bekleyen randevu yok.</p>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {pending.map((appointment) => (
             <AppointmentApprovalCard key={appointment.id} appointment={appointment} />
           ))}
@@ -45,13 +47,15 @@ export default async function AppointmentsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Geçmiş / Diğer</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+          Geçmiş / Diğer
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
           {others.map((appointment) => (
             <AppointmentApprovalCard key={appointment.id} appointment={appointment} />
           ))}
         </div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addBarberToSalon } from "@/app/actions/appointments";
+import { Button } from "@/components/ui/Button";
 
 export function AddEmployeeForm({ salonId }: { salonId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -30,38 +31,41 @@ export function AddEmployeeForm({ salonId }: { salonId: string }) {
   return (
     <form
       action={handleSubmit}
-      className="space-y-4 rounded-xl border border-black/10 dark:border-white/10 p-5 bg-white dark:bg-neutral-900 max-w-md"
+      className="max-w-md space-y-5 rounded-xl border border-neutral-200 bg-white p-5 shadow-card"
     >
-      <h2 className="text-lg font-semibold">Yeni Çalışan Ekle</h2>
+      <div>
+        <h2 className="text-base font-semibold text-neutral-900">Yeni Çalışan Ekle</h2>
+        <p className="text-sm text-neutral-500">Önceden kayıtlı bir kullanıcıyı salonuna çalışan olarak ata.</p>
+      </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="userId">
-          Kullanıcı ID (önceden kayıtlı hesap)
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-neutral-700" htmlFor="userId">
+          Kullanıcı ID
         </label>
         <input
           id="userId"
           name="userId"
           required
           placeholder="uuid"
-          className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm placeholder:text-neutral-400 focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-600"
         />
       </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="title">
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-neutral-700" htmlFor="title">
           Unvan
         </label>
         <input
           id="title"
           name="title"
           placeholder="Usta Berber, Çırak..."
-          className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm placeholder:text-neutral-400 focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-600"
         />
       </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="speedMultiplier">
-          Hız Çarpanı (0.5 hızlı – 2.0 yavaş)
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-neutral-700" htmlFor="speedMultiplier">
+          Hız Çarpanı
         </label>
         <input
           id="speedMultiplier"
@@ -71,28 +75,24 @@ export function AddEmployeeForm({ salonId }: { salonId: string }) {
           min="0.5"
           max="2"
           defaultValue={1}
-          className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-600"
         />
-        <p className="text-xs text-neutral-500">
-          Örn: 0.8 = usta (hızlı), 1.5 = çırak (yavaş). Final süre = Temel Süre × Çarpan.
+        <p className="text-xs text-neutral-400">
+          0.8 = usta (hızlı), 1.5 = çırak (yavaş). Final süre = Temel Süre × Çarpan.
         </p>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="autoApprove" className="rounded" />
+      <label className="flex items-center gap-2 text-sm text-neutral-700">
+        <input type="checkbox" name="autoApprove" className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-600" />
         Randevuları otomatik onayla
       </label>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full rounded-lg bg-primary text-white py-2 text-sm font-medium disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Ekleniyor..." : "Çalışanı Ekle"}
-      </button>
+      </Button>
 
       {message && (
-        <p className={message.type === "success" ? "text-sm text-green-600" : "text-sm text-red-500"}>
+        <p className={message.type === "success" ? "text-sm text-green-600" : "text-sm text-red-600"}>
           {message.text}
         </p>
       )}

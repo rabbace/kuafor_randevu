@@ -99,4 +99,40 @@ npx expo start
 
 `app.json` içindeki `extra.supabaseUrl` / `extra.supabaseAnonKey` ve AdMob app id'lerini doldurman gerekiyor.
 
-Sıradaki adım: Push notification (randevudan 2 saat önce hatırlatma) ve AdMob banner/interstitial entegrasyon kodları.
+## Adım 4 — Push Notification ve AdMob Entegrasyonu (tamamlandı)
+
+```
+supabase/
+├── migrations/0004_push_tokens.sql      # push_tokens, appointment_reminders_sent, reminder view
+└── functions/
+    ├── _shared/expoPush.ts              # Expo Push API'sine toplu bildirim gönderimi
+    ├── send-appointment-reminders/      # cron: randevudan 2 saat önce hatırlatma
+    └── notify-waitlist/                 # webhook: randevu iptal/red olunca yedek listeyi bilgilendirir
+
+mobile/src/
+├── lib/pushNotifications.ts             # izin isteme + Expo push token kaydı (push_tokens tablosu)
+├── lib/ads.ts                           # AdMob banner/interstitial unit ID'leri (dev=test, prod=gerçek)
+├── components/ads/AdBanner.tsx          # ANCHORED_ADAPTIVE_BANNER
+└── hooks/useInterstitialAd.ts           # randevu onayı sonrası tam ekran reklam
+```
+
+### Push Notification Akışı
+1. Müşteri profil ekranını açtığında `registerForPushNotificationsAsync` izin ister ve Expo push token'ı `push_tokens` tablosuna kaydeder.
+2. `send-appointment-reminders` Edge Function'ı Supabase pg_cron ile her 10 dakikada bir tetiklenir, başlangıcına ~2 saat kalan onaylı randevuları `appointment_reminder_targets` view'ından çekip Expo Push API'sine gönderir; `appointment_reminders_sent` ile mükerrer gönderim engellenir.
+3. Bir randevu `cancelled`/`rejected` olduğunda Supabase Database Webhook'u `notify-waitlist` fonksiyonunu tetikler; o gün/salon için yedek listede en eski bekleyen müşteriye bildirim gider ve durumu `notified` yapılır.
+
+### AdMob Akışı
+- Sadece müşteri uygulamasında: `AdBanner` randevularım ekranının altında gösterilir.
+- `useInterstitialAd` hook'u randevu onaylandıktan sonra çağrılarak tam ekran reklam gösterir (kapanınca otomatik yeniden yüklenir).
+- Geliştirmede her zaman Google'ın test ID'leri (`TestIds`) kullanılır; production ID'leri `mobile/src/lib/ads.ts` ve `mobile/app.json` (`googleMobileAdsAppId`) içinde doldurulmalı.
+
+### Deploy
+```bash
+supabase functions deploy send-appointment-reminders
+supabase functions deploy notify-waitlist
+# Dashboard > Database > Cron Jobs ve Webhooks bölümlerinden tetikleyicileri ekle (fonksiyon dosyalarındaki yorumlara bak)
+```
+
+---
+
+Dört adım da tamamlandı: veritabanı/Auth, web yönetim paneli, mobil uygulama, push/AdMob entegrasyonu. Sıradaki olası adımlar: gerçek `npm install` + derleme testi, EAS build yapılandırması, ödeme/komisyon raporlama ekranları.

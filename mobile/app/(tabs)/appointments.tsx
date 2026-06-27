@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
+import { AdBanner } from "@/components/ads/AdBanner";
 import type { Appointment } from "@/types/database";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,6 +45,7 @@ export default function AppointmentsScreen() {
         )}
         ListEmptyComponent={<Text style={styles.empty}>Henüz randevun yok.</Text>}
       />
+      <AdBanner />
     </View>
   );
 }

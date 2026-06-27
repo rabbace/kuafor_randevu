@@ -1,11 +1,17 @@
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
+import { registerForPushNotificationsAsync } from "@/lib/pushNotifications";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+
+  useEffect(() => {
+    if (user?.id) registerForPushNotificationsAsync(user.id);
+  }, [user?.id]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();

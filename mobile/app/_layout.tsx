@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
+import mobileAds from "react-native-google-mobile-ads";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
+
+mobileAds().initialize();
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);

@@ -75,6 +75,8 @@ Migration geçmişi: `0001_init.sql` → `0002_rls.sql` → `0003_auth_trigger.s
 
 - **Web paneli:** Sidebar + Topbar dashboard layout, `Logo`/`Button`/`Card`/`Badge` bileşenleri, avatar baş harfleri, durum etiketleri (Badge renkleri).
 - **Mobil:** Merkezi renk paleti (`src/theme/colors.ts`), tema store üzerinden tüm ekranlara uygulanır. Tab bar ve ekran başlıkları ikonlu (`@expo/vector-icons`), kartlarda gölge (`src/theme/shadows.ts`), avatar baş harfleri, renkli durum rozetleri (Keşfet/Randevularım/Profil ekranları).
+- **Mobil giriş/kayıt ekranları:** `mobile/app/(auth)/login.tsx` ve `register.tsx`, `expo-linear-gradient` ile mor degrade hero alanı, ikonlu (`Field`) input bileşenleri ve degrade dolgulu birincil buton kullanır; tasarım dili onboarding ekranıyla tutarlıdır.
+- **İlk açılış akışı:** Onboarding (`mobile/app/onboarding/index.tsx`) bittikten sonra ya da oturum yoksa kullanıcı doğrudan **kayıt (üyelik) ekranına** (`/(auth)/register`) yönlendirilir; giriş ekranına link üzerinden gidilir. Onboarding slaytları da aynı degrade/ikon tasarım dilini kullanır (`src/components/onboarding/OnboardingSlide.tsx`).
 - **Web giriş:** `web/app/login/page.tsx` hem e-posta/şifre (`signInWithPassword`) hem Google/Apple SSO ile giriş sunar — OAuth sağlayıcıları henüz canlı Supabase projesinde ayarlanmadığı için e-posta/şifre birincil giriş yoludur.
 
 ## 11. Özel Modüller

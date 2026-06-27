@@ -10,6 +10,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { OnboardingSlide, type OnboardingSlideData } from "@/components/onboarding/OnboardingSlide";
 import { markOnboardingCompleted } from "@/lib/onboarding";
 
@@ -18,19 +20,19 @@ const SLIDES: OnboardingSlideData[] = [
     key: "1",
     title: "Randevunu Saniyeler İçinde Al",
     description: "Sevdiğin berberi veya kuaförü seç, uygun saati gör, hemen rezervasyon yap.",
-    image: require("../../assets/onboarding-1.png"),
+    icon: "calendar-outline",
   },
   {
     key: "2",
     title: "Dolu mu? Yedek Listeye Gir",
     description: "İstediğin saat doluysa yedek listeye katıl, iptal olunca anında bildirim al.",
-    image: require("../../assets/onboarding-2.png"),
+    icon: "notifications-outline",
   },
   {
     key: "3",
     title: "Sadakat Puanı Kazan",
     description: "Her ziyaretinde puan topla, belirli sayıda randevuda ücretsiz hizmetin seni bekliyor.",
-    image: require("../../assets/onboarding-3.png"),
+    icon: "star-outline",
   },
 ];
 
@@ -46,7 +48,7 @@ export default function OnboardingScreen() {
 
   async function handleFinish() {
     await markOnboardingCompleted();
-    router.replace("/(auth)/login" as never);
+    router.replace("/(auth)/register" as never);
   }
 
   function handleNext() {
@@ -59,6 +61,12 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.skipRow}>
+        <Pressable onPress={handleFinish}>
+          <Text style={styles.skipText}>Atla</Text>
+        </Pressable>
+      </View>
+
       <FlatList
         ref={listRef}
         data={SLIDES}
@@ -81,13 +89,13 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Pressable onPress={handleFinish}>
-          <Text style={styles.skipText}>Atla</Text>
-        </Pressable>
-        <Pressable style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextText}>
-            {activeIndex === SLIDES.length - 1 ? "Başla" : "İleri"}
-          </Text>
+        <Pressable style={styles.nextButtonWrap} onPress={handleNext}>
+          <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.nextButton}>
+            <Text style={styles.nextText}>
+              {activeIndex === SLIDES.length - 1 ? "Başla" : "İleri"}
+            </Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </LinearGradient>
         </Pressable>
       </View>
     </View>
@@ -96,17 +104,22 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  dotsContainer: { flexDirection: "row", justifyContent: "center", gap: 8, marginVertical: 16 },
+  skipRow: { alignItems: "flex-end", paddingHorizontal: 24, paddingTop: 60 },
+  skipText: { color: "#999", fontSize: 15, fontWeight: "600" },
+  dotsContainer: { flexDirection: "row", justifyContent: "center", gap: 8, marginVertical: 20 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ddd" },
-  dotActive: { backgroundColor: "#6D28D9", width: 20 },
+  dotActive: { backgroundColor: "#6D28D9", width: 22 },
   footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
-  skipText: { color: "#999", fontSize: 15 },
-  nextButton: { backgroundColor: "#6D28D9", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
-  nextText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  nextButtonWrap: { borderRadius: 16, overflow: "hidden" },
+  nextButton: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nextText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 });

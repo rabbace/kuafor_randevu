@@ -49,7 +49,7 @@ export default function RootLayout() {
       if (!onboardingDone) {
         router.replace("/onboarding" as never);
       } else if (!data.session) {
-        router.replace("/(auth)/login" as never);
+        router.replace("/(auth)/register" as never);
       } else {
         router.replace("/(tabs)" as never);
       }

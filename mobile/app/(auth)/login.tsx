@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useThemeStore } from "@/store/useThemeStore";
 
@@ -31,57 +33,156 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Giriş Yap</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.hero}>
+        <View style={styles.logoCircle}>
+          <Ionicons name="cut" size={28} color="#fff" />
+        </View>
+        <Text style={styles.heroTitle}>Tekrar Hoş Geldin</Text>
+        <Text style={styles.heroSubtitle}>Randevularına devam etmek için giriş yap.</Text>
+      </LinearGradient>
 
-      <TextInput
-        style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-        placeholder="E-posta"
-        placeholderTextColor={colors.textMuted}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-        placeholder="Şifre"
-        placeholderTextColor={colors.textMuted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={20}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Field icon="mail-outline" colors={colors}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="E-posta"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </Field>
+            <Field icon="lock-closed-outline" colors={colors}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Şifre"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </Field>
 
-      <Pressable style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={handleEmailLogin} disabled={isLoading}>
-        <Text style={styles.primaryButtonText}>{isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}</Text>
-      </Pressable>
+            <Pressable style={styles.primaryButtonWrap} onPress={handleEmailLogin} disabled={isLoading}>
+              <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>{isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}</Text>
+              </LinearGradient>
+            </Pressable>
 
-      <Pressable style={[styles.oauthButton, { borderColor: colors.border }]} onPress={() => handleOAuthLogin("google")}>
-        <Text style={[styles.oauthText, { color: colors.text }]}>Google ile Giriş Yap</Text>
-      </Pressable>
-      <Pressable style={[styles.oauthButton, { borderColor: colors.border }]} onPress={() => handleOAuthLogin("apple")}>
-        <Text style={[styles.oauthText, { color: colors.text }]}>Apple ile Giriş Yap</Text>
-      </Pressable>
+            <View style={styles.dividerRow}>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>veya</Text>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            </View>
 
-      <Pressable onPress={() => router.push("/(auth)/register" as never)}>
-        <Text style={[styles.registerLink, { color: colors.textMuted }]}>Hesabın yok mu? Kayıt ol</Text>
-      </Pressable>
+            <Pressable
+              style={[styles.oauthButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+              onPress={() => handleOAuthLogin("google")}
+            >
+              <Ionicons name="logo-google" size={17} color={colors.text} />
+              <Text style={[styles.oauthText, { color: colors.text }]}>Google ile Giriş Yap</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.oauthButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+              onPress={() => handleOAuthLogin("apple")}
+            >
+              <Ionicons name="logo-apple" size={18} color={colors.text} />
+              <Text style={[styles.oauthText, { color: colors.text }]}>Apple ile Giriş Yap</Text>
+            </Pressable>
+
+            <Pressable onPress={() => router.push("/(auth)/register" as never)}>
+              <Text style={[styles.registerLink, { color: colors.textMuted }]}>
+                Hesabın yok mu? <Text style={{ color: colors.primary, fontWeight: "700" }}>Kayıt ol</Text>
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+function Field({
+  icon,
+  colors,
+  children,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  colors: ReturnType<typeof useThemeStore.getState>["colors"];
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={[styles.field, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <Ionicons name={icon} size={18} color={colors.textMuted} />
+      <View style={{ flex: 1 }}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12 },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 24, textAlign: "center" },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  hero: {
+    paddingTop: 80,
+    paddingBottom: 36,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
-  primaryButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 8 },
-  primaryButtonText: { color: "#fff", fontWeight: "600" },
-  oauthButton: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  oauthText: { fontWeight: "500" },
-  registerLink: { textAlign: "center", marginTop: 16 },
+  logoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  heroTitle: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  heroSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 4, textAlign: "center" },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 0 },
+  card: {
+    marginTop: -24,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    gap: 12,
+  },
+  field: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+  },
+  input: { flex: 1, paddingVertical: 13, fontSize: 15 },
+  primaryButtonWrap: { borderRadius: 14, overflow: "hidden", marginTop: 4 },
+  primaryButton: { paddingVertical: 15, alignItems: "center" },
+  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
+  divider: { flex: 1, height: 1 },
+  dividerText: { fontSize: 12 },
+  oauthButton: {
+    flexDirection: "row",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  oauthText: { fontWeight: "600", fontSize: 14 },
+  registerLink: { textAlign: "center", marginTop: 8, fontSize: 13 },
 });

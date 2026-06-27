@@ -14,6 +14,26 @@ const config: Config = {
           700: "#5b21b6",
         },
         secondary: "var(--color-secondary)",
+        accent: {
+          mint: "var(--accent-mint)",
+          lilac: "var(--accent-lilac)",
+          sky: "var(--accent-sky)",
+          peach: "var(--accent-peach)",
+        },
+        background: "var(--background)",
+        surface: {
+          DEFAULT: "var(--surface)",
+          elevated: "var(--surface-elevated)",
+        },
+        foreground: {
+          DEFAULT: "var(--foreground)",
+          muted: "var(--foreground-muted)",
+        },
+        border: "var(--border)",
+      },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.5rem",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
@@ -23,7 +43,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

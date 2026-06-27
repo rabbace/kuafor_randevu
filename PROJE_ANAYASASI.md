@@ -84,6 +84,10 @@ Migration geçmişi: `0001_init.sql` → `0002_rls.sql` → `0003_auth_trigger.s
 - Sadakat puanı sistemi.
 - AdMob reklam entegrasyonu (banner + interstitial).
 
-## 12. Güncelleme Kuralı
+## 12. Planlanan (Henüz Geliştirilmedi)
+
+- **Berber puanlama / değerlendirme sistemi:** Uygulama gerçek kullanıcılarla çalışmaya başladıktan sonra eklenecek. Müşteri, tamamlanan randevu sonrası berbere puan (örn. 1-5 yıldız) ve yorum verebilecek. Henüz DB şemasına veya ekranlara eklenmedi — sıradaki büyük özellik adayı.
+
+## 13. Güncelleme Kuralı
 
 > Yeni bir özellik istendiğinde bu dosyaya ilgili madde eklenir veya güncellenir. Bu dosya kod ile birlikte commit edilir.

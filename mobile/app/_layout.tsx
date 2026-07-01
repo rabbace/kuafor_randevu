@@ -1,20 +1,37 @@
 import { useEffect, useState } from "react";
-import { Stack, router } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Stack, router, useRootNavigationState } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { isExpoGo } from "@/lib/ads";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 
+// Native splash'ı biz kontrol edelim; bootstrap bitince gizlenir.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* zaten gizlenmiş olabilir */
+});
+
 if (!isExpoGo) {
   // Expo Go bu native modülü desteklemediği için yalnızca gerçek build'lerde yüklenir.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require("react-native-google-mobile-ads").default().initialize();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require("react-native-google-mobile-ads")
+      .default()
+      .initialize()
+      .catch(() => {});
+  } catch (e) {
+    // AdMob init hatası uygulamanın açılmasını engellememeli.
+    console.warn("AdMob init failed", e);
+  }
 }
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  const rootNavigationState = useRootNavigationState();
   const setSession = useAuthStore((s) => s.setSession);
   const setUser = useAuthStore((s) => s.setUser);
   const setLoading = useAuthStore((s) => s.setLoading);
@@ -40,42 +57,81 @@ export default function RootLayout() {
 
   useEffect(() => {
     async function bootstrap() {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      if (data.session) await loadProfile(data.session.user.id);
-      setLoading(false);
+      let route = "/onboarding";
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        if (data.session) {
+          try {
+            await loadProfile(data.session.user.id);
+          } catch (e) {
+            console.warn("loadProfile failed", e);
+          }
+        }
 
-      const onboardingDone = await hasCompletedOnboarding();
-      if (!onboardingDone) {
-        router.replace("/onboarding" as never);
-      } else if (!data.session) {
-        router.replace("/(auth)/register" as never);
-      } else {
-        router.replace("/(tabs)" as never);
+        const onboardingDone = await hasCompletedOnboarding();
+        if (!onboardingDone) {
+          route = "/onboarding";
+        } else if (!data.session) {
+          route = "/(auth)/register";
+        } else {
+          route = "/(tabs)";
+        }
+      } catch (e) {
+        // Ne olursa olsun uygulama açılmalı; hata durumunda onboarding'e düş.
+        console.warn("bootstrap failed", e);
+      } finally {
+        setLoading(false);
+        setInitialRoute(route);
+        setIsReady(true);
+        SplashScreen.hideAsync().catch(() => {});
       }
-      setIsReady(true);
     }
 
     bootstrap();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) loadProfile(session.user.id);
+      if (session) loadProfile(session.user.id).catch(() => {});
     });
 
     return () => subscription.subscription.unsubscribe();
   }, []);
 
-  if (!isReady) return null;
+  // Navigator mount olduktan SONRA yönlendir; erken router.replace() exception fırlatır.
+  useEffect(() => {
+    if (!rootNavigationState?.key || !initialRoute) return;
+    try {
+      router.replace(initialRoute as never);
+    } catch (e) {
+      console.warn("initial redirect failed", e);
+    }
+    setInitialRoute(null);
+  }, [rootNavigationState?.key, initialRoute]);
 
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack
+        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}
+      >
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+      {!isReady && (
+        <View style={[styles.loadingOverlay, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

@@ -2,7 +2,8 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 // Expo Go, AdMob gibi özel native modülleri desteklemez (yalnızca geliştirme/üretim build'lerinde çalışır).
-export const isExpoGo = Constants.appOwnership === "expo";
+export const isExpoGo =
+  Constants.appOwnership === "expo" || Constants.executionEnvironment === "storeClient";
 
 // Üretimde gerçek AdMob unit ID'lerini buraya (veya .env üzerinden) koy.
 // Geliştirme sırasında her zaman test ID'leri kullanılır.

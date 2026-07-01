@@ -16,6 +16,17 @@ Notifications.setNotificationHandler({
  * Edge Function (send-appointment-reminders) bu tablodan token'ları çekip FCM/APNs'e gönderir.
  */
 export async function registerForPushNotificationsAsync(userId: string): Promise<string | null> {
+  try {
+    return await registerInternal(userId);
+  } catch (e) {
+    // Push kaydı başarısız olsa bile uygulama akışı bozulmamalı
+    // (ör. geçersiz EAS projectId ile getExpoPushTokenAsync exception fırlatır).
+    console.warn("registerForPushNotificationsAsync failed", e);
+    return null;
+  }
+}
+
+async function registerInternal(userId: string): Promise<string | null> {
   if (!Device.isDevice) return null;
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();

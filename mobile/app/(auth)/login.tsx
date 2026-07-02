@@ -12,13 +12,24 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  function translateAuthError(message: string): string {
+    if (/invalid login credentials/i.test(message)) return "E-posta veya şifre hatalı.";
+    if (/email not confirmed/i.test(message)) return "E-posta adresin henüz doğrulanmamış. Lütfen e-postanı kontrol et.";
+    if (/network/i.test(message)) return "Bağlantı hatası. İnternet bağlantını kontrol et.";
+    return "Giriş yapılamadı. Lütfen bilgilerini kontrol edip tekrar dene.";
+  }
+
   async function handleEmailLogin() {
+    if (!email.trim() || !password) {
+      Alert.alert("Eksik Bilgi", "E-posta ve şifre alanları zorunludur.");
+      return;
+    }
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setIsLoading(false);
 
     if (error) {
-      Alert.alert("Giriş Hatası", error.message);
+      Alert.alert("Giriş Hatası", translateAuthError(error.message));
       return;
     }
     router.replace("/(tabs)" as never);
@@ -29,7 +40,7 @@ export default function LoginScreen() {
       provider,
       options: { redirectTo: "kuaforrandevu://auth-callback" },
     });
-    if (error) Alert.alert("Giriş Hatası", error.message);
+    if (error) Alert.alert("Giriş Hatası", "Bu yöntemle giriş yapılamadı. Lütfen tekrar dene.");
   }
 
   return (

@@ -21,13 +21,39 @@ export default function RegisterScreen() {
       Alert.alert("Eksik Bilgi", "Ad Soyad, telefon, e-posta ve şifre alanları zorunludur.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      Alert.alert("Geçersiz E-posta", "Lütfen geçerli bir e-posta adresi gir.");
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert("Zayıf Şifre", "Şifre en az 6 karakter olmalıdır.");
+      return;
+    }
 
     setIsLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
 
     if (error || !data.user) {
       setIsLoading(false);
-      Alert.alert("Kayıt Hatası", error?.message ?? "Bilinmeyen bir hata oluştu.");
+      let message = "Kayıt oluşturulamadı. Lütfen tekrar dene.";
+      if (error && /already registered|already been registered/i.test(error.message)) {
+        message = "Bu e-posta adresiyle zaten bir hesap var. Giriş yapmayı dene.";
+      } else if (error && /password/i.test(error.message)) {
+        message = "Şifre gereksinimleri karşılanmıyor. Daha güçlü bir şifre dene.";
+      }
+      Alert.alert("Kayıt Hatası", message);
+      return;
+    }
+
+    // E-posta doğrulaması gerekiyorsa oturum oluşmaz; RLS nedeniyle aşağıdaki
+    // profil güncellemesi hiçbir satırı etkilemeden sessizce geçerdi.
+    if (!data.session) {
+      setIsLoading(false);
+      Alert.alert(
+        "E-postanı Doğrula",
+        "Hesabını etkinleştirmek için e-postana gönderilen bağlantıya tıkla, ardından giriş yap.",
+        [{ text: "Tamam", onPress: () => router.replace("/(auth)/login" as never) }]
+      );
       return;
     }
 
@@ -39,7 +65,7 @@ export default function RegisterScreen() {
     setIsLoading(false);
 
     if (profileError) {
-      Alert.alert("Profil Hatası", profileError.message);
+      Alert.alert("Profil Hatası", "Profil bilgileri kaydedilemedi. Profil sayfasından tekrar deneyebilirsin.");
       return;
     }
 

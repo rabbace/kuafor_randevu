@@ -1,4 +1,5 @@
 import { FlatList, Pressable, StyleSheet, Text } from "react-native";
+import { useThemeStore } from "@/store/useThemeStore";
 import type { TimeSlot } from "@/lib/slotCalculator";
 
 interface SlotPickerProps {
@@ -8,6 +9,8 @@ interface SlotPickerProps {
 }
 
 export function SlotPicker({ slots, selectedStart, onSelect }: SlotPickerProps) {
+  const colors = useThemeStore((s) => s.colors);
+
   return (
     <FlatList
       data={slots}
@@ -23,15 +26,17 @@ export function SlotPicker({ slots, selectedStart, onSelect }: SlotPickerProps) 
             onPress={() => onSelect(item)}
             style={[
               styles.slot,
-              !item.isAvailable && styles.slotDisabled,
-              isSelected && styles.slotSelected,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              !item.isAvailable && { backgroundColor: colors.border + "55", borderColor: "transparent" },
+              isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
           >
             <Text
               style={[
                 styles.slotText,
-                !item.isAvailable && styles.slotTextDisabled,
-                isSelected && styles.slotTextSelected,
+                { color: colors.text },
+                !item.isAvailable && { color: colors.textMuted, textDecorationLine: "line-through" },
+                isSelected && { color: colors.primaryText, fontWeight: "700" },
               ]}
             >
               {item.start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
@@ -44,18 +49,13 @@ export function SlotPicker({ slots, selectedStart, onSelect }: SlotPickerProps) 
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, marginBottom: 8 },
+  row: { gap: 10, marginBottom: 10 },
   slot: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 13,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#ddd",
     alignItems: "center",
   },
-  slotDisabled: { backgroundColor: "#f2f2f2", borderColor: "#f2f2f2" },
-  slotSelected: { backgroundColor: "#6D28D9", borderColor: "#6D28D9" },
-  slotText: { fontWeight: "500" },
-  slotTextDisabled: { color: "#bbb" },
-  slotTextSelected: { color: "#fff" },
+  slotText: { fontWeight: "600", fontSize: 14 },
 });

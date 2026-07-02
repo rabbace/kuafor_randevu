@@ -4,7 +4,6 @@ import { useThemeStore } from "@/store/useThemeStore";
 
 export default function TabsLayout() {
   const colors = useThemeStore((s) => s.colors);
-  const isDark = useThemeStore((s) => s.isDark);
 
   return (
     <Tabs
@@ -20,9 +19,8 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
         headerStyle: { backgroundColor: colors.surface, shadowColor: "transparent", elevation: 0 },
-        headerTitleStyle: { color: colors.text, fontWeight: "700", fontSize: 20 },
+        headerTitleStyle: { color: colors.text, fontWeight: "800", fontSize: 22 },
         headerShadowVisible: false,
-        headerStatusBarHeight: isDark ? undefined : undefined,
       }}
     >
       <Tabs.Screen

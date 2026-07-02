@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { OnboardingSlide, type OnboardingSlideData } from "@/components/onboarding/OnboardingSlide";
 import { markOnboardingCompleted } from "@/lib/onboarding";
+import { useThemeStore } from "@/store/useThemeStore";
 
 const SLIDES: OnboardingSlideData[] = [
   {
@@ -37,6 +38,7 @@ const SLIDES: OnboardingSlideData[] = [
 ];
 
 export default function OnboardingScreen() {
+  const colors = useThemeStore((s) => s.colors);
   const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
@@ -60,10 +62,13 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.skipRow}>
-        <Pressable onPress={handleFinish}>
-          <Text style={styles.skipText}>Atla</Text>
+        <Pressable
+          onPress={handleFinish}
+          style={[styles.skipButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Text style={[styles.skipText, { color: colors.textMuted }]}>Atla</Text>
         </Pressable>
       </View>
 
@@ -83,7 +88,11 @@ export default function OnboardingScreen() {
         {SLIDES.map((slide, index) => (
           <View
             key={slide.key}
-            style={[styles.dot, index === activeIndex && styles.dotActive]}
+            style={[
+              styles.dot,
+              { backgroundColor: colors.border },
+              index === activeIndex && { backgroundColor: colors.primary, width: 26 },
+            ]}
           />
         ))}
       </View>
@@ -103,12 +112,12 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1 },
   skipRow: { alignItems: "flex-end", paddingHorizontal: 24, paddingTop: 60 },
-  skipText: { color: "#999", fontSize: 15, fontWeight: "600" },
-  dotsContainer: { flexDirection: "row", justifyContent: "center", gap: 8, marginVertical: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ddd" },
-  dotActive: { backgroundColor: "#6D28D9", width: 22 },
+  skipButton: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
+  skipText: { fontSize: 14, fontWeight: "600" },
+  dotsContainer: { flexDirection: "row", justifyContent: "center", gap: 8, marginVertical: 24 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 36,

@@ -15,20 +15,25 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("customer");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    password?: string;
+    form?: string;
+  }>({});
 
   async function handleRegister() {
-    if (!fullName.trim() || !phone.trim() || !email.trim() || !password) {
-      Alert.alert("Eksik Bilgi", "Ad Soyad, telefon, e-posta ve şifre alanları zorunludur.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
-      Alert.alert("Geçersiz E-posta", "Lütfen geçerli bir e-posta adresi gir.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("Zayıf Şifre", "Şifre en az 6 karakter olmalıdır.");
-      return;
-    }
+    const nextErrors: typeof errors = {};
+    if (!fullName.trim()) nextErrors.fullName = "Ad soyad zorunludur.";
+    if (!phone.trim()) nextErrors.phone = "Telefon numarası zorunludur.";
+    if (!email.trim()) nextErrors.email = "E-posta zorunludur.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()))
+      nextErrors.email = "Geçerli bir e-posta adresi gir.";
+    if (!password) nextErrors.password = "Şifre zorunludur.";
+    else if (password.length < 6) nextErrors.password = "Şifre en az 6 karakter olmalıdır.";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setIsLoading(true);
     const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
@@ -41,7 +46,7 @@ export default function RegisterScreen() {
       } else if (error && /password/i.test(error.message)) {
         message = "Şifre gereksinimleri karşılanmıyor. Daha güçlü bir şifre dene.";
       }
-      Alert.alert("Kayıt Hatası", message);
+      setErrors({ form: message });
       return;
     }
 
@@ -116,9 +121,13 @@ export default function RegisterScreen() {
                 placeholder="Ad Soyad"
                 placeholderTextColor={colors.textMuted}
                 value={fullName}
-                onChangeText={setFullName}
+                onChangeText={(v) => {
+                  setFullName(v);
+                  if (errors.fullName) setErrors((e) => ({ ...e, fullName: undefined }));
+                }}
               />
             </Field>
+            {errors.fullName && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.fullName}</Text>}
             <Field icon="call-outline" colors={colors}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
@@ -126,9 +135,13 @@ export default function RegisterScreen() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(v) => {
+                  setPhone(v);
+                  if (errors.phone) setErrors((e) => ({ ...e, phone: undefined }));
+                }}
               />
             </Field>
+            {errors.phone && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.phone}</Text>}
             <Field icon="mail-outline" colors={colors}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
@@ -137,9 +150,13 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (errors.email || errors.form) setErrors((e) => ({ ...e, email: undefined, form: undefined }));
+                }}
               />
             </Field>
+            {errors.email && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.email}</Text>}
             <Field icon="lock-closed-outline" colors={colors}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
@@ -147,9 +164,19 @@ export default function RegisterScreen() {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (errors.password || errors.form) setErrors((e) => ({ ...e, password: undefined, form: undefined }));
+                }}
               />
             </Field>
+            {errors.password && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.password}</Text>}
+            {errors.form && (
+              <View style={[styles.formErrorBox, { backgroundColor: colors.danger + "14", borderColor: colors.danger + "44" }]}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+                <Text style={[styles.formErrorText, { color: colors.danger }]}>{errors.form}</Text>
+              </View>
+            )}
 
             <Pressable style={styles.primaryButtonWrap} onPress={handleRegister} disabled={isLoading}>
               <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.primaryButton}>
@@ -268,4 +295,15 @@ const styles = StyleSheet.create({
   primaryButton: { paddingVertical: 15, alignItems: "center" },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   loginLink: { textAlign: "center", marginTop: 12, fontSize: 13 },
+  errorText: { fontSize: 12, marginTop: -6, marginLeft: 6 },
+  formErrorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  formErrorText: { flex: 1, fontSize: 13, fontWeight: "500" },
 });

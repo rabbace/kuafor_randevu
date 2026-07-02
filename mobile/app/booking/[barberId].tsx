@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "@/lib/supabase";
 import { generateDailySlots, type TimeSlot } from "@/lib/slotCalculator";
 import { SlotPicker } from "@/components/booking/SlotPicker";
@@ -314,16 +315,22 @@ export default function BookingScreen() {
       <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <Pressable
           style={[
-            styles.bookButton,
-            {
-              backgroundColor: colors.primary,
-              opacity: !selectedService || !selectedSlot || isBooking ? 0.5 : 1,
-            },
+            styles.bookButtonWrap,
+            { opacity: !selectedService || !selectedSlot || isBooking ? 0.5 : 1 },
           ]}
           disabled={!selectedService || !selectedSlot || isBooking}
           onPress={handleBook}
         >
-          <Text style={styles.bookButtonText}>{isBooking ? "Alınıyor..." : "Randevu Al"}</Text>
+          <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.bookButton}>
+            {isBooking ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="calendar-outline" size={17} color="#fff" />
+                <Text style={styles.bookButtonText}>Randevu Al</Text>
+              </>
+            )}
+          </LinearGradient>
         </Pressable>
       </View>
     </View>
@@ -343,11 +350,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: "700" },
   headerSubtitle: { fontSize: 13, marginTop: 1 },
-  content: { padding: 18, paddingBottom: 24, gap: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", marginTop: 14, marginBottom: 10 },
+  content: { padding: 24, paddingTop: 18, paddingBottom: 24, gap: 4 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: 16, marginBottom: 10 },
   emptyText: { fontSize: 13, fontStyle: "italic" },
-  serviceList: { gap: 8 },
-  serviceCard: { borderWidth: 1, borderRadius: 14, padding: 14 },
+  serviceList: { gap: 10 },
+  serviceCard: { borderWidth: 1, borderRadius: 16, padding: 16 },
   serviceName: { fontSize: 15, fontWeight: "600" },
   serviceMeta: { fontSize: 12, marginTop: 3 },
   dateRow: { gap: 8, paddingBottom: 4 },
@@ -362,6 +369,14 @@ const styles = StyleSheet.create({
   dateDay: { fontSize: 12, fontWeight: "600" },
   dateNum: { fontSize: 17, fontWeight: "700" },
   footer: { padding: 16, paddingBottom: 28, borderTopWidth: 1 },
-  bookButton: { borderRadius: 14, paddingVertical: 15, alignItems: "center" },
+  bookButtonWrap: { borderRadius: 14, overflow: "hidden" },
+  bookButton: {
+    flexDirection: "row",
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   bookButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

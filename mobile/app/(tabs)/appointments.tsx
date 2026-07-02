@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
-import { cardShadow } from "@/theme/shadows";
 import { AdBanner } from "@/components/ads/AdBanner";
 import { ContactButtons } from "@/components/contact/ContactButtons";
 import type { Appointment, Barber, Service } from "@/types/database";
@@ -27,6 +26,30 @@ export default function AppointmentsScreen() {
   const [barber, setBarber] = useState<Barber | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const sections = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const today: Appointment[] = [];
+    const upcoming: Appointment[] = [];
+    const past: Appointment[] = [];
+    for (const a of appointments) {
+      const start = new Date(a.start_time);
+      if (start >= todayStart && start < tomorrowStart) today.push(a);
+      else if (start >= tomorrowStart) upcoming.push(a);
+      else past.push(a);
+    }
+    past.reverse();
+    return [
+      { title: "Bugün", data: today },
+      { title: "Yaklaşan", data: upcoming },
+      { title: "Geçmiş", data: past },
+    ].filter((s) => s.data.length > 0);
+  }, [appointments]);
 
   async function loadAppointments() {
     if (!user?.id) return;
@@ -47,6 +70,7 @@ export default function AppointmentsScreen() {
         setAppointments(appts ?? []);
         setServices(svc ?? []);
       }
+      setIsLoading(false);
       return;
     }
 
@@ -56,6 +80,7 @@ export default function AppointmentsScreen() {
       .eq("customer_id", user.id)
       .order("start_time", { ascending: true });
     setAppointments(data ?? []);
+    setIsLoading(false);
   }
 
   useEffect(() => {
@@ -78,6 +103,14 @@ export default function AppointmentsScreen() {
     ]);
   }
 
+  if (isLoading) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {isBarber && barber && (
@@ -87,15 +120,29 @@ export default function AppointmentsScreen() {
         </Pressable>
       )}
 
-      <FlatList
-        data={appointments}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, gap: 12 }}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={{ padding: 24, paddingTop: 12, gap: 12 }}
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{section.title}</Text>
+        )}
         renderItem={({ item }) => {
           const meta = STATUS_META[item.status];
           const start = new Date(item.start_time);
           return (
-            <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
+            <View
+              style={[
+                styles.card,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  borderLeftWidth: 4,
+                  borderLeftColor: meta?.color ?? colors.border,
+                },
+              ]}
+            >
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.date, { color: colors.text }]}>
@@ -158,11 +205,11 @@ export default function AppointmentsScreen() {
               {!isBarber && (item.status === "pending" || item.status === "confirmed") && (
                 <View style={styles.actionRow}>
                   <Pressable
-                    style={[styles.actionButton, { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.danger }]}
+                    style={[styles.actionButton, { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border }]}
                     onPress={() => handleCancel(item.id)}
                   >
-                    <Ionicons name="close-circle-outline" size={15} color={colors.danger} />
-                    <Text style={[styles.actionText, { color: colors.danger }]}>İptal Et</Text>
+                    <Ionicons name="close-circle-outline" size={15} color={colors.textMuted} />
+                    <Text style={[styles.actionText, { color: colors.textMuted }]}>İptal Et</Text>
                   </Pressable>
                 </View>
               )}
@@ -171,7 +218,9 @@ export default function AppointmentsScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={40} color={colors.textMuted} />
+            <View style={[styles.emptyIcon, { backgroundColor: colors.primary + "14" }]}>
+              <Ionicons name="calendar-outline" size={36} color={colors.primary} />
+            </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz randevu yok</Text>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               {isBarber ? "Gelen randevular burada listelenecek." : "Bir berber bularak randevu alabilirsin."}
@@ -344,6 +393,16 @@ function ManualAppointmentModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   addButton: {
     flexDirection: "row",
     gap: 8,
@@ -355,9 +414,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addButtonText: { color: "#fff", fontWeight: "600" },
-  card: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  card: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  date: { fontWeight: "700", fontSize: 15 },
+  date: { fontWeight: "700", fontSize: 16 },
   time: { fontSize: 13, marginTop: 2 },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   badgeText: { fontSize: 12, fontWeight: "700" },
@@ -367,8 +426,8 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: 6,
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 11,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import MapView, { Marker, type LatLng } from "react-native-maps";
 import { supabase } from "@/lib/supabase";
 import { registerForPushNotificationsAsync } from "@/lib/pushNotifications";
@@ -226,19 +227,17 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
-      <View style={styles.profileHeader}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+      <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.profileHeader}>
+        <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initialsOf(user?.fullName)}</Text>
         </View>
-        <View>
-          <Text style={[styles.name, { color: colors.text }]}>{user?.fullName ?? "Misafir"}</Text>
-          {user?.role && (
-            <View style={[styles.roleBadge, { backgroundColor: colors.primary + "1A" }]}>
-              <Text style={[styles.roleText, { color: colors.primary }]}>{ROLE_LABELS[user.role] ?? user.role}</Text>
-            </View>
-          )}
-        </View>
-      </View>
+        <Text style={styles.name}>{user?.fullName ?? "Misafir"}</Text>
+        {user?.role && (
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>{ROLE_LABELS[user.role] ?? user.role}</Text>
+          </View>
+        )}
+      </LinearGradient>
 
       <View style={[styles.statCard, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
         <Ionicons name="star" size={20} color="#F59E0B" />
@@ -455,12 +454,32 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24, gap: 20 },
-  profileHeader: { flexDirection: "row", alignItems: "center", gap: 14 },
-  avatar: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontWeight: "700", fontSize: 20 },
-  name: { fontSize: 20, fontWeight: "700" },
-  roleBadge: { marginTop: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, alignSelf: "flex-start" },
-  roleText: { fontSize: 12, fontWeight: "700" },
+  profileHeader: {
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+  },
+  avatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.45)",
+  },
+  avatarText: { color: "#fff", fontWeight: "800", fontSize: 26 },
+  name: { fontSize: 21, fontWeight: "800", color: "#fff" },
+  roleBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  roleText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   statCard: {
     flexDirection: "row",
     alignItems: "center",

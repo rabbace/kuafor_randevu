@@ -11,6 +11,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
 
   function translateAuthError(message: string): string {
     if (/invalid login credentials/i.test(message)) return "E-posta veya şifre hatalı.";
@@ -20,16 +21,18 @@ export default function LoginScreen() {
   }
 
   async function handleEmailLogin() {
-    if (!email.trim() || !password) {
-      Alert.alert("Eksik Bilgi", "E-posta ve şifre alanları zorunludur.");
-      return;
-    }
+    const nextErrors: typeof errors = {};
+    if (!email.trim()) nextErrors.email = "E-posta zorunludur.";
+    if (!password) nextErrors.password = "Şifre zorunludur.";
+    setErrors(nextErrors);
+    if (nextErrors.email || nextErrors.password) return;
+
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setIsLoading(false);
 
     if (error) {
-      Alert.alert("Giriş Hatası", translateAuthError(error.message));
+      setErrors({ form: translateAuthError(error.message) });
       return;
     }
     router.replace("/(tabs)" as never);
@@ -72,9 +75,13 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (errors.email || errors.form) setErrors((e) => ({ ...e, email: undefined, form: undefined }));
+                }}
               />
             </Field>
+            {errors.email && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.email}</Text>}
             <Field icon="lock-closed-outline" colors={colors}>
               <TextInput
                 style={[styles.input, { color: colors.text }]}
@@ -82,9 +89,19 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (errors.password || errors.form) setErrors((e) => ({ ...e, password: undefined, form: undefined }));
+                }}
               />
             </Field>
+            {errors.password && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.password}</Text>}
+            {errors.form && (
+              <View style={[styles.formErrorBox, { backgroundColor: colors.danger + "14", borderColor: colors.danger + "44" }]}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+                <Text style={[styles.formErrorText, { color: colors.danger }]}>{errors.form}</Text>
+              </View>
+            )}
 
             <Pressable style={styles.primaryButtonWrap} onPress={handleEmailLogin} disabled={isLoading}>
               <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.primaryButton}>
@@ -196,4 +213,15 @@ const styles = StyleSheet.create({
   },
   oauthText: { fontWeight: "600", fontSize: 14 },
   registerLink: { textAlign: "center", marginTop: 8, fontSize: 13 },
+  errorText: { fontSize: 12, marginTop: -6, marginLeft: 6 },
+  formErrorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  formErrorText: { flex: 1, fontSize: 13, fontWeight: "500" },
 });

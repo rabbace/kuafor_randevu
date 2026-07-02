@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import { supabase } from "@/lib/supabase";
@@ -47,7 +48,10 @@ export default function DiscoverScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
+          <Pressable
+            style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}
+            onPress={() => router.push(`/booking/${item.id}` as never)}
+          >
             <View style={styles.headerRow}>
               <View style={[styles.avatar, { backgroundColor: colors.primary + "1A" }]}>
                 <Text style={[styles.avatarText, { color: colors.primary }]}>
@@ -87,7 +91,13 @@ export default function DiscoverScreen() {
             )}
 
             <ContactButtons phone={item.whatsapp_phone} />
-          </View>
+
+            <View style={styles.bookRow}>
+              <Ionicons name="calendar-outline" size={15} color={colors.primary} />
+              <Text style={[styles.bookText, { color: colors.primary }]}>Randevu almak için dokun</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+            </View>
+          </Pressable>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -115,6 +125,8 @@ const styles = StyleSheet.create({
   addressRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   address: { fontSize: 13, flex: 1 },
   map: { width: "100%", height: 140, borderRadius: 14, marginTop: 2 },
+  bookRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingTop: 2 },
+  bookText: { fontSize: 13, fontWeight: "600" },
   emptyState: { alignItems: "center", paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "700" },
   emptyText: { fontSize: 13, textAlign: "center" },

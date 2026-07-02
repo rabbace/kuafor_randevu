@@ -1,4 +1,4 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text } from "react-native";
 import type { TimeSlot } from "@/lib/slotCalculator";
 
 interface SlotPickerProps {
@@ -12,6 +12,7 @@ export function SlotPicker({ slots, selectedStart, onSelect }: SlotPickerProps) 
     <FlatList
       data={slots}
       numColumns={3}
+      scrollEnabled={false}
       keyExtractor={(item) => item.start.toISOString()}
       columnWrapperStyle={styles.row}
       renderItem={({ item }) => {

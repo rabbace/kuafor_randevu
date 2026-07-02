@@ -34,6 +34,8 @@ export default function ProfileScreen() {
   const colors = useThemeStore((s) => s.colors);
   const setMode = useThemeStore((s) => s.setMode);
   const mode = useThemeStore((s) => s.mode);
+  // salon_owner da salon sahibi bir berberdir; aynı yönetim arayüzünü görür.
+  const isBarberRole = user?.role === "barber" || user?.role === "salon_owner";
 
   const [barber, setBarber] = useState<Barber | null>(null);
   const [barberChecked, setBarberChecked] = useState(false);
@@ -70,7 +72,7 @@ export default function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (!user?.id || user.role !== "barber") return;
+    if (!user?.id || !isBarberRole) return;
 
     supabase
       .from("barbers")
@@ -112,7 +114,7 @@ export default function ProfileScreen() {
 
     if (salonError || !salon) {
       setIsCreatingSalon(false);
-      Alert.alert("Salon Oluşturulamadı", salonError?.message ?? "Bilinmeyen bir hata oluştu.");
+      Alert.alert("Salon Oluşturulamadı", "Salon kaydedilirken bir hata oluştu. Lütfen tekrar dene.");
       return;
     }
 
@@ -130,7 +132,7 @@ export default function ProfileScreen() {
     setIsCreatingSalon(false);
 
     if (barberError || !newBarber) {
-      Alert.alert("Berber Profili Oluşturulamadı", barberError?.message ?? "Bilinmeyen bir hata oluştu.");
+      Alert.alert("Berber Profili Oluşturulamadı", "Berber profili kaydedilirken bir hata oluştu. Lütfen tekrar dene.");
       return;
     }
 
@@ -152,7 +154,7 @@ export default function ProfileScreen() {
       Alert.alert("Geçersiz Süre", "Süreyi dakika cinsinden gir (örn. 30).");
       return;
     }
-    if (!Number.isFinite(price) || price < 0) {
+    if (!Number.isFinite(price) || price <= 0) {
       Alert.alert("Geçersiz Fiyat", "Geçerli bir fiyat gir (örn. 250).");
       return;
     }
@@ -167,7 +169,7 @@ export default function ProfileScreen() {
     setIsAddingService(false);
 
     if (error) {
-      Alert.alert("Hizmet Eklenemedi", error.message);
+      Alert.alert("Hizmet Eklenemedi", "Hizmet kaydedilirken bir hata oluştu. Lütfen tekrar dene.");
       return;
     }
 
@@ -186,7 +188,7 @@ export default function ProfileScreen() {
         onPress: async () => {
           const { error } = await supabase.from("services").update({ is_active: false }).eq("id", service.id);
           if (error) {
-            Alert.alert("Silinemedi", error.message);
+            Alert.alert("Silinemedi", "Hizmet silinirken bir hata oluştu. Lütfen tekrar dene.");
             return;
           }
           setServices((prev) => prev.filter((s) => s.id !== service.id));
@@ -210,7 +212,7 @@ export default function ProfileScreen() {
     setIsSaving(false);
 
     if (error) {
-      Alert.alert("Kaydedilemedi", error.message);
+      Alert.alert("Kaydedilemedi", "Adres ve konum bilgisi kaydedilirken bir hata oluştu.");
       return;
     }
     Alert.alert("Kaydedildi", "Adres ve konum bilgin güncellendi.");
@@ -276,7 +278,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {user?.role === "barber" && barberChecked && !barber && (
+      {isBarberRole && barberChecked && !barber && (
         <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="storefront-outline" size={18} color={colors.primary} />
@@ -321,7 +323,7 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {user?.role === "barber" && barber && (
+      {isBarberRole && barber && (
         <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="cut-outline" size={18} color={colors.primary} />
@@ -394,7 +396,7 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {user?.role === "barber" && barber && (
+      {isBarberRole && barber && (
         <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="location-outline" size={18} color={colors.primary} />

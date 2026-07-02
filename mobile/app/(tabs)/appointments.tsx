@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -62,6 +62,22 @@ export default function AppointmentsScreen() {
     loadAppointments();
   }, [user?.id]);
 
+  async function updateStatus(appointmentId: string, status: string) {
+    const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
+    if (error) {
+      Alert.alert("Güncellenemedi", "Randevu durumu güncellenirken bir hata oluştu.");
+      return;
+    }
+    loadAppointments();
+  }
+
+  function handleCancel(appointmentId: string) {
+    Alert.alert("Randevuyu İptal Et", "Bu randevuyu iptal etmek istediğine emin misin?", [
+      { text: "Vazgeç", style: "cancel" },
+      { text: "İptal Et", style: "destructive", onPress: () => updateStatus(appointmentId, "cancelled") },
+    ]);
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {isBarber && barber && (
@@ -107,6 +123,49 @@ export default function AppointmentsScreen() {
               )}
 
               {!isBarber && barber?.whatsapp_phone && <ContactButtons phone={barber.whatsapp_phone} />}
+
+              {isBarber && item.status === "pending" && (
+                <View style={styles.actionRow}>
+                  <Pressable
+                    style={[styles.actionButton, { backgroundColor: "#15803D" }]}
+                    onPress={() => updateStatus(item.id, "confirmed")}
+                  >
+                    <Ionicons name="checkmark" size={15} color="#fff" />
+                    <Text style={styles.actionText}>Onayla</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.actionButton, { backgroundColor: "#B91C1C" }]}
+                    onPress={() => updateStatus(item.id, "rejected")}
+                  >
+                    <Ionicons name="close" size={15} color="#fff" />
+                    <Text style={styles.actionText}>Reddet</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {isBarber && item.status === "confirmed" && (
+                <View style={styles.actionRow}>
+                  <Pressable
+                    style={[styles.actionButton, { backgroundColor: "#1D4ED8" }]}
+                    onPress={() => updateStatus(item.id, "completed")}
+                  >
+                    <Ionicons name="checkmark-done" size={15} color="#fff" />
+                    <Text style={styles.actionText}>Tamamlandı</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {!isBarber && (item.status === "pending" || item.status === "confirmed") && (
+                <View style={styles.actionRow}>
+                  <Pressable
+                    style={[styles.actionButton, { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.danger }]}
+                    onPress={() => handleCancel(item.id)}
+                  >
+                    <Ionicons name="close-circle-outline" size={15} color={colors.danger} />
+                    <Text style={[styles.actionText, { color: colors.danger }]}>İptal Et</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           );
         }}
@@ -160,9 +219,25 @@ function ManualAppointmentModal({
 
   async function handleCreate() {
     const service = services.find((s) => s.id === serviceId);
-    if (!name.trim() || !service || !dateTime) return;
+    if (!name.trim()) {
+      Alert.alert("Eksik Bilgi", "Müşteri adı zorunludur.");
+      return;
+    }
+    if (!service) {
+      Alert.alert("Eksik Bilgi", "Lütfen bir hizmet seç.");
+      return;
+    }
 
-    const start = new Date(dateTime);
+    const start = new Date(dateTime.trim().replace(" ", "T"));
+    if (!dateTime.trim() || Number.isNaN(start.getTime())) {
+      Alert.alert("Geçersiz Tarih", "Tarihi 'YYYY-AA-GG SS:dd' biçiminde gir (örn. 2026-07-15 14:30).");
+      return;
+    }
+    if (start.getTime() <= Date.now()) {
+      Alert.alert("Geçersiz Tarih", "Randevu tarihi gelecekte olmalıdır.");
+      return;
+    }
+
     const end = new Date(start.getTime() + service.base_duration_minutes * 60000);
 
     setIsSaving(true);
@@ -180,12 +255,21 @@ function ManualAppointmentModal({
     });
     setIsSaving(false);
 
-    if (!error) {
-      setName("");
-      setPhone("");
-      setDateTime("");
-      onCreated();
+    if (error) {
+      const isConflict = error.code === "23P01" || /conflict|overlap|exclusion/i.test(error.message ?? "");
+      Alert.alert(
+        "Randevu Eklenemedi",
+        isConflict
+          ? "Bu saat dilimi dolu, lütfen başka bir saat seçin."
+          : "Randevu kaydedilirken bir hata oluştu. Lütfen tekrar dene."
+      );
+      return;
     }
+
+    setName("");
+    setPhone("");
+    setDateTime("");
+    onCreated();
   }
 
   return (
@@ -278,6 +362,17 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   badgeText: { fontSize: 12, fontWeight: "700" },
   manualRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  actionRow: { flexDirection: "row", gap: 8 },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionText: { color: "#fff", fontWeight: "600", fontSize: 13 },
   manualBadge: { fontSize: 12, fontWeight: "600" },
   emptyState: { alignItems: "center", paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "700" },

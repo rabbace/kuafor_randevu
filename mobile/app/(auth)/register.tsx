@@ -39,7 +39,10 @@ export default function RegisterScreen() {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: "kuaforrandevu://login" },
+      options: {
+        emailRedirectTo: "kuaforrandevu://login",
+        data: { full_name: fullName.trim(), phone: phone.trim(), role },
+      },
     });
 
     if (error || !data.user) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -210,6 +211,18 @@ export default function AppointmentsScreen() {
                   >
                     <Ionicons name="close-circle-outline" size={15} color={colors.textMuted} />
                     <Text style={[styles.actionText, { color: colors.textMuted }]}>İptal Et</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {!isBarber && item.status === "completed" && (
+                <View style={styles.actionRow}>
+                  <Pressable
+                    style={[styles.actionButton, { backgroundColor: "#6D28D9" }]}
+                    onPress={() => router.push(`/rating/${item.id}` as never)}
+                  >
+                    <Ionicons name="star-outline" size={15} color="#fff" />
+                    <Text style={styles.actionText}>Değerlendir</Text>
                   </Pressable>
                 </View>
               )}

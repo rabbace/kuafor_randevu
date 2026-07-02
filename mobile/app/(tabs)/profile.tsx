@@ -444,6 +444,51 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {isBarberRole && barber && (
+        <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="grid-outline" size={18} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Salon Yönetimi</Text>
+          </View>
+          {[
+            { icon: "time-outline", label: "Çalışma Saatleri", route: "/schedule" },
+            { icon: "storefront-outline", label: "Salon Bilgilerini Düzenle", route: "/salon/edit" },
+            { icon: "list-outline", label: "Bekleme Listesi", route: "/waitlist" },
+          ].map((item) => (
+            <Pressable
+              key={item.route}
+              style={[styles.navRow, { borderColor: colors.border }]}
+              onPress={() => router.push(item.route as never)}
+            >
+              <Ionicons name={item.icon as never} size={18} color={colors.primary} />
+              <Text style={[styles.navRowLabel, { color: colors.text }]}>{item.label}</Text>
+              <Ionicons name="chevron-forward-outline" size={16} color={colors.textMuted} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.surface }, cardShadow]}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="person-outline" size={18} color={colors.primary} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hesabım</Text>
+        </View>
+        {[
+          { icon: "gift-outline", label: "Sadakat Puanlarım", route: "/loyalty" },
+          { icon: "people-outline", label: "Bekleme Listem", route: "/waitlist" },
+        ].map((item) => (
+          <Pressable
+            key={item.route + item.label}
+            style={[styles.navRow, { borderColor: colors.border }]}
+            onPress={() => router.push(item.route as never)}
+          >
+            <Ionicons name={item.icon as never} size={18} color={colors.primary} />
+            <Text style={[styles.navRowLabel, { color: colors.text }]}>{item.label}</Text>
+            <Ionicons name="chevron-forward-outline" size={16} color={colors.textMuted} />
+          </Pressable>
+        ))}
+      </View>
+
       <Pressable style={[styles.signOutButton, { borderColor: colors.border }]} onPress={handleSignOut}>
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={[styles.signOutText, { color: colors.danger }]}>Çıkış Yap</Text>
@@ -524,6 +569,14 @@ const styles = StyleSheet.create({
   map: { width: "100%", height: 200, borderRadius: 14 },
   primaryButton: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   primaryButtonText: { color: "#fff", fontWeight: "600" },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  navRowLabel: { flex: 1, fontSize: 14, fontWeight: "500" },
   signOutButton: {
     flexDirection: "row",
     gap: 8,

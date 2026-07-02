@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/datetimepicker": "8.2.0",
     "@supabase/supabase-js": "^2.45.4",
     "expo": "~51.0.28",
     "expo-build-properties": "^0.12.5",

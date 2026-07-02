@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DateTimePicker = require("@react-native-community/datetimepicker").default;
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -338,40 +340,65 @@ function ManualAppointmentModal({
   const colors = useThemeStore((s) => s.colors);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [serviceId, setServiceId] = useState<string | null>(services[0]?.id ?? null);
-  const [dateTime, setDateTime] = useState("");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
+    return d;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  function toggleService(id: string) {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  }
+
+  const totalDuration = selectedServiceIds.reduce((sum, id) => {
+    const svc = services.find((s) => s.id === id);
+    return sum + (svc?.base_duration_minutes ?? 0);
+  }, 0);
+
+  const totalPrice = selectedServiceIds.reduce((sum, id) => {
+    const svc = services.find((s) => s.id === id);
+    return sum + (svc?.price ?? 0);
+  }, 0);
+
+  function formatDate(d: Date) {
+    return d.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
+  }
+  function formatTime(d: Date) {
+    return d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  }
+
   async function handleCreate() {
-    const service = services.find((s) => s.id === serviceId);
     if (!name.trim()) {
       Alert.alert("Eksik Bilgi", "Müşteri adı zorunludur.");
       return;
     }
-    if (!service) {
-      Alert.alert("Eksik Bilgi", "Lütfen bir hizmet seç.");
+    if (selectedServiceIds.length === 0) {
+      Alert.alert("Eksik Bilgi", "En az bir hizmet seç.");
       return;
     }
-
-    const start = new Date(dateTime.trim().replace(" ", "T"));
-    if (!dateTime.trim() || Number.isNaN(start.getTime())) {
-      Alert.alert("Geçersiz Tarih", "Tarihi 'YYYY-AA-GG SS:dd' biçiminde gir (örn. 2026-07-15 14:30).");
-      return;
-    }
-    if (start.getTime() <= Date.now()) {
+    if (selectedDate.getTime() <= Date.now()) {
       Alert.alert("Geçersiz Tarih", "Randevu tarihi gelecekte olmalıdır.");
       return;
     }
 
-    const end = new Date(start.getTime() + service.base_duration_minutes * 60000);
+    const end = new Date(selectedDate.getTime() + totalDuration * 60000);
+    // Çoklu hizmet için ilk hizmet ID'yi service_id olarak kaydet
+    const primaryServiceId = selectedServiceIds[0];
 
     setIsSaving(true);
     const { error } = await supabase.from("appointments").insert({
       salon_id: barber.salon_id,
       barber_id: barber.id,
-      service_id: service.id,
-      start_time: start.toISOString(),
+      service_id: primaryServiceId,
+      start_time: selectedDate.toISOString(),
       end_time: end.toISOString(),
+      total_price: totalPrice,
       status: "confirmed",
       is_manual_entry: true,
       manual_customer_name: name.trim(),
@@ -393,7 +420,7 @@ function ManualAppointmentModal({
 
     setName("");
     setPhone("");
-    setDateTime("");
+    setSelectedServiceIds([]);
     onCreated();
   }
 
@@ -403,14 +430,14 @@ function ManualAppointmentModal({
         <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Dışarıdan Randevu Ekle</Text>
-            <Pressable onPress={onClose}>
+            <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
             </Pressable>
           </View>
 
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-            placeholder="Müşteri Adı"
+            placeholder="Müşteri Adı *"
             placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
@@ -423,30 +450,86 @@ function ManualAppointmentModal({
             value={phone}
             onChangeText={setPhone}
           />
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-            placeholder="Tarih/Saat (YYYY-AA-GG SS:dd)"
-            placeholderTextColor={colors.textMuted}
-            value={dateTime}
-            onChangeText={setDateTime}
-          />
 
+          {/* Tarih & Saat Seçici */}
+          <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Tarih ve Saat</Text>
+          <View style={styles.dateTimeRow}>
+            <Pressable
+              style={[styles.dateTimeButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>{formatDate(selectedDate)}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.dateTimeButton, { backgroundColor: colors.background, borderColor: colors.border, flex: 0.5 }]}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Ionicons name="time-outline" size={16} color={colors.primary} />
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>{formatTime(selectedDate)}</Text>
+            </Pressable>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              minimumDate={new Date()}
+              onChange={(_e: unknown, d?: Date) => {
+                setShowDatePicker(false);
+                if (d) {
+                  const merged = new Date(d);
+                  merged.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+                  setSelectedDate(merged);
+                }
+              }}
+            />
+          )}
+          {showTimePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="time"
+              minuteInterval={15}
+              onChange={(_e: unknown, d?: Date) => {
+                setShowTimePicker(false);
+                if (d) {
+                  const merged = new Date(selectedDate);
+                  merged.setHours(d.getHours(), d.getMinutes(), 0, 0);
+                  setSelectedDate(merged);
+                }
+              }}
+            />
+          )}
+
+          {/* Çoklu Hizmet Seçimi */}
+          <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>
+            Hizmetler{selectedServiceIds.length > 0 ? ` · ${totalDuration} dk · ${totalPrice} ₺` : ""}
+          </Text>
           <View style={styles.serviceRow}>
-            {services.map((s) => (
-              <Pressable
-                key={s.id}
-                style={[
-                  styles.serviceChip,
-                  {
-                    backgroundColor: serviceId === s.id ? colors.primary : colors.background,
-                    borderColor: serviceId === s.id ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setServiceId(s.id)}
-              >
-                <Text style={{ color: serviceId === s.id ? "#fff" : colors.text, fontSize: 12 }}>{s.name}</Text>
-              </Pressable>
-            ))}
+            {services.map((s) => {
+              const active = selectedServiceIds.includes(s.id);
+              return (
+                <Pressable
+                  key={s.id}
+                  style={[
+                    styles.serviceChip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.background,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => toggleService(s.id)}
+                >
+                  {active && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  <Text style={{ color: active ? "#fff" : colors.text, fontSize: 12, fontWeight: "600" }}>
+                    {s.name}
+                  </Text>
+                  <Text style={{ color: active ? "rgba(255,255,255,0.75)" : colors.textMuted, fontSize: 11 }}>
+                    {s.base_duration_minutes}dk
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <View style={styles.modalActions}>
@@ -454,7 +537,7 @@ function ManualAppointmentModal({
               <Text style={{ color: colors.text }}>Vazgeç</Text>
             </Pressable>
             <Pressable
-              style={[styles.modalButton, { backgroundColor: colors.primary }]}
+              style={[styles.modalButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
               onPress={handleCreate}
               disabled={isSaving}
             >
@@ -532,7 +615,10 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: "700" },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
   serviceRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  serviceChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  serviceChip: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  pickerLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 },
+  dateTimeRow: { flexDirection: "row", gap: 8 },
+  dateTimeButton: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 11 },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   modalButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
 });

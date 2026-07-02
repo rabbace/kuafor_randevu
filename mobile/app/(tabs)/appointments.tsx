@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { cardShadow } from "@/theme/shadows";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -51,6 +53,41 @@ export default function AppointmentsScreen() {
       { title: "Geçmiş", data: past },
     ].filter((s) => s.data.length > 0);
   }, [appointments]);
+
+  const todaySummary = useMemo(() => {
+    if (!isBarber) return null;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const todays = appointments.filter((a) => {
+      const t = new Date(a.start_time);
+      return t >= todayStart && t < tomorrowStart;
+    });
+    if (todays.length === 0) return null;
+
+    const now = new Date();
+    const next = todays
+      .filter((a) => (a.status === "pending" || a.status === "confirmed") && new Date(a.start_time) > now)
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+
+    const completed = todays.filter((a) => a.status === "completed");
+    const earnings = completed.reduce((sum, a) => sum + (a.total_price ?? 0), 0);
+
+    const denominatorStatuses = ["completed", "cancelled", "no_show", "confirmed", "pending"];
+    const denominator = todays.filter((a) => denominatorStatuses.includes(a.status)).length;
+    const completionRate = denominator > 0 ? Math.round((completed.length / denominator) * 100) : 0;
+
+    return {
+      count: todays.length,
+      nextLabel: next
+        ? `${new Date(next.start_time).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} ${next.manual_customer_name ?? "Müşteri"}`
+        : "Yok",
+      earnings,
+      completionRate,
+    };
+  }, [appointments, isBarber]);
 
   async function loadAppointments() {
     if (!user?.id) return;
@@ -119,6 +156,32 @@ export default function AppointmentsScreen() {
           <Ionicons name="add-circle-outline" size={18} color="#fff" />
           <Text style={styles.addButtonText}>Dışarıdan Randevu Ekle</Text>
         </Pressable>
+      )}
+
+      {isBarber && todaySummary && (
+        <LinearGradient colors={["#6D28D9", "#7C3AED"]} style={[styles.summaryCard, cardShadow]}>
+          <Text style={styles.summaryTitle}>Bugünkü Özet</Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryValue}>{todaySummary.count}</Text>
+              <Text style={styles.summaryLabel}>Randevu</Text>
+            </View>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryValue} numberOfLines={2}>
+                {todaySummary.nextLabel}
+              </Text>
+              <Text style={styles.summaryLabel}>Sıradaki</Text>
+            </View>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryValue}>{todaySummary.earnings} ₺</Text>
+              <Text style={styles.summaryLabel}>Tahmini Kazanç</Text>
+            </View>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryValue}>%{todaySummary.completionRate}</Text>
+              <Text style={styles.summaryLabel}>Tamamlanma</Text>
+            </View>
+          </View>
+        </LinearGradient>
       )}
 
       <SectionList
@@ -427,6 +490,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addButtonText: { color: "#fff", fontWeight: "600" },
+  summaryCard: { marginHorizontal: 16, marginTop: 12, borderRadius: 18, padding: 16, gap: 12 },
+  summaryTitle: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  summaryRow: { flexDirection: "row", gap: 8 },
+  summaryBox: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    gap: 4,
+  },
+  summaryValue: { color: "#fff", fontSize: 13, fontWeight: "800", textAlign: "center" },
+  summaryLabel: { color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "600", textAlign: "center" },
   card: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   date: { fontWeight: "700", fontSize: 16 },

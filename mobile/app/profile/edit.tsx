@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
+import type { GenderType } from "@/types/database";
 
 const GENDER_OPTIONS = [
   { key: "male", label: "Erkek", icon: "man-outline" },
@@ -61,7 +62,7 @@ export default function ProfileEditScreen() {
       return;
     }
 
-    setUser({ ...user, fullName: fullName.trim(), gender });
+    setUser({ ...user, fullName: fullName.trim(), gender: (gender || null) as GenderType | null });
     Alert.alert("Kaydedildi", "Profil bilgilerin güncellendi.", [
       { text: "Tamam", onPress: () => router.back() },
     ]);

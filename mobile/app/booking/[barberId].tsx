@@ -53,6 +53,22 @@ export default function BookingScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
+
+  const loyaltyPoints = user?.loyaltyPoints ?? 0;
+  const { maxDiscount, pointsToRedeem } = useMemo(() => {
+    if (!selectedService) return { maxDiscount: 0, pointsToRedeem: 0 };
+    // 100 puan = 20 TL; hizmet fiyatını aşan birim kullanılmaz.
+    const availableUnits = Math.floor(loyaltyPoints / 100);
+    const neededUnits = Math.ceil(selectedService.price / 20);
+    const units = Math.min(availableUnits, neededUnits);
+    return {
+      maxDiscount: Math.min(units * 20, selectedService.price),
+      pointsToRedeem: units * 100,
+    };
+  }, [loyaltyPoints, selectedService]);
+  const discount = usePoints ? maxDiscount : 0;
+  const finalPrice = selectedService ? Math.max(0, selectedService.price - discount) : 0;
 
   const days = useMemo(() => {
     const today = startOfDay(new Date());
@@ -164,15 +180,19 @@ export default function BookingScreen() {
 
     setIsBooking(true);
     try {
-      const { error } = await supabase.from("appointments").insert({
-        salon_id: salon.id,
-        barber_id: barber.id,
-        service_id: selectedService.id,
-        customer_id: user.id,
-        start_time: selectedSlot.start.toISOString(),
-        end_time: selectedSlot.end.toISOString(),
-        status: "pending",
-      });
+      const { data: created, error } = await supabase
+        .from("appointments")
+        .insert({
+          salon_id: salon.id,
+          barber_id: barber.id,
+          service_id: selectedService.id,
+          customer_id: user.id,
+          start_time: selectedSlot.start.toISOString(),
+          end_time: selectedSlot.end.toISOString(),
+          status: "pending",
+        })
+        .select("id")
+        .single();
 
       if (error) {
         const isConflict =
@@ -186,6 +206,35 @@ export default function BookingScreen() {
         );
         loadDayAppointments();
         return;
+      }
+
+      // Sadakat puanı hareketleri (hata olsa bile randevu oluşmuş sayılır).
+      try {
+        const appointmentId = created?.id ?? null;
+        const transactions: {
+          customer_id: string;
+          points_change: number;
+          reason: string;
+          appointment_id: string | null;
+        }[] = [
+          {
+            customer_id: user.id,
+            points_change: Math.floor(selectedService.price / 10),
+            reason: "Randevu oluşturuldu",
+            appointment_id: appointmentId,
+          },
+        ];
+        if (usePoints && pointsToRedeem > 0) {
+          transactions.push({
+            customer_id: user.id,
+            points_change: -pointsToRedeem,
+            reason: "Randevuda kullanıldı",
+            appointment_id: appointmentId,
+          });
+        }
+        await supabase.from("loyalty_transactions").insert(transactions);
+      } catch {
+        // Puan işlemi başarısız olsa da randevu akışını bozma.
       }
 
       Alert.alert(
@@ -310,6 +359,51 @@ export default function BookingScreen() {
             onSelect={(slot) => setSelectedSlot(slot)}
           />
         )}
+
+        {selectedService && selectedSlot && loyaltyPoints >= 100 && maxDiscount > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sadakat Puanı</Text>
+            <Pressable
+              style={[
+                styles.loyaltyCard,
+                {
+                  backgroundColor: usePoints ? colors.primary + "14" : colors.surface,
+                  borderColor: usePoints ? colors.primary : colors.border,
+                },
+                cardShadow,
+              ]}
+              onPress={() => setUsePoints((v) => !v)}
+            >
+              <Ionicons
+                name={usePoints ? "checkbox" : "square-outline"}
+                size={22}
+                color={usePoints ? colors.primary : colors.textMuted}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.loyaltyTitle, { color: colors.text }]}>
+                  Puanlarımı kullan ({pointsToRedeem} puan = {maxDiscount} TL indirim)
+                </Text>
+                <Text style={[styles.loyaltyHint, { color: colors.textMuted }]}>
+                  Mevcut puanın: {loyaltyPoints}
+                </Text>
+              </View>
+            </Pressable>
+          </>
+        )}
+
+        {selectedService && selectedSlot && (
+          <View style={[styles.priceSummary, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Ödenecek Tutar</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {discount > 0 && (
+                <Text style={[styles.priceStruck, { color: colors.textMuted }]}>
+                  {selectedService.price} ₺
+                </Text>
+              )}
+              <Text style={[styles.priceValue, { color: colors.text }]}>{finalPrice} ₺</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
@@ -327,7 +421,9 @@ export default function BookingScreen() {
             ) : (
               <>
                 <Ionicons name="calendar-outline" size={17} color="#fff" />
-                <Text style={styles.bookButtonText}>Randevu Al</Text>
+                <Text style={styles.bookButtonText}>
+                  {selectedService && selectedSlot ? `Randevu Al · ${finalPrice} ₺` : "Randevu Al"}
+                </Text>
               </>
             )}
           </LinearGradient>
@@ -379,4 +475,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bookButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  loyaltyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  loyaltyTitle: { fontSize: 14, fontWeight: "600" },
+  loyaltyHint: { fontSize: 12, marginTop: 2 },
+  priceSummary: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+  },
+  priceLabel: { fontSize: 13, fontWeight: "600" },
+  priceStruck: { fontSize: 14, textDecorationLine: "line-through" },
+  priceValue: { fontSize: 18, fontWeight: "800" },
 });

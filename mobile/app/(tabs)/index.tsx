@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import { supabase } from "@/lib/supabase";
 import { useThemeStore } from "@/store/useThemeStore";
 import { ContactButtons } from "@/components/contact/ContactButtons";
-import type { Barber } from "@/types/database";
+import { generateDailySlots } from "@/lib/slotCalculator";
+import type { Appointment, Barber, Salon, Service } from "@/types/database";
 
 type BarberWithMeta = Barber & {
   user: { full_name: string | null } | null;
-  salon: { name: string } | null;
+  salon: { name: string; photo_url?: string | null } | null;
 };
+
+type RatingInfo = { avg: number; total: number };
 
 function initialsOf(name: string | null | undefined) {
   if (!name) return "?";
@@ -23,22 +26,201 @@ function initialsOf(name: string | null | undefined) {
     .toUpperCase();
 }
 
+function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatSlotLabel(day: "today" | "tomorrow", slot: Date): string {
+  const time = slot.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  return day === "today" ? `Bugün ${time}'da müsait` : `Yarın ${time}'da müsait`;
+}
+
 export default function DiscoverScreen() {
   const colors = useThemeStore((s) => s.colors);
   const [barbers, setBarbers] = useState<BarberWithMeta[]>([]);
+  const [ratings, setRatings] = useState<Map<string, RatingInfo>>(new Map());
+  const [availability, setAvailability] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
     supabase
       .from("barbers")
-      .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name)")
+      .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name, photo_url)")
       .not("latitude", "is", null)
       .then(({ data }) => {
         setBarbers((data ?? []) as unknown as BarberWithMeta[]);
         setIsLoading(false);
       });
   }, []);
+
+  // Puanları ikincil olarak yükle (view henüz oluşturulmamış olabilir).
+  useEffect(() => {
+    if (barbers.length === 0) return;
+    let cancelled = false;
+    async function loadRatings() {
+      try {
+        const { data, error } = await supabase
+          .from("barber_avg_ratings")
+          .select("barber_id, avg_rating, total_ratings")
+          .in("barber_id", barbers.map((b) => b.id));
+        if (error || !data || cancelled) return;
+        const map = new Map<string, RatingInfo>();
+        for (const row of data as { barber_id: string; avg_rating: number; total_ratings: number }[]) {
+          map.set(row.barber_id, { avg: Number(row.avg_rating), total: Number(row.total_ratings) });
+        }
+        setRatings(map);
+      } catch {
+        // View henüz yoksa sessizce geç.
+      }
+    }
+    loadRatings();
+    return () => {
+      cancelled = true;
+    };
+  }, [barbers]);
+
+  // Müsaitlik bilgisini ikincil olarak yükle.
+  useEffect(() => {
+    if (barbers.length === 0) return;
+    let cancelled = false;
+
+    async function computeForBarber(
+      barber: BarberWithMeta,
+      salonsById: Map<string, Salon>,
+      servicesBySalon: Map<string, Service[]>,
+      schedulesByBarber: Map<string, { day_of_week: number; start_time: string; end_time: string; is_off: boolean }[]>,
+      appointmentsByBarber: Map<string, Appointment[]>
+    ): Promise<string> {
+      const salon = salonsById.get(barber.salon_id);
+      if (!salon) return "Bu hafta müsait değil";
+
+      const salonServices = servicesBySalon.get(barber.salon_id) ?? [];
+      const shortest =
+        salonServices.length > 0
+          ? salonServices.reduce((a, b) => (a.base_duration_minutes <= b.base_duration_minutes ? a : b))
+          : ({
+              id: "default",
+              salon_id: barber.salon_id,
+              name: "Varsayılan",
+              base_duration_minutes: 30,
+              price: 0,
+            } as Service);
+
+      const now = new Date();
+      const days: { key: "today" | "tomorrow"; date: Date }[] = [
+        { key: "today", date: startOfDay(now) },
+        { key: "tomorrow", date: startOfDay(new Date(now.getTime() + 86_400_000)) },
+      ];
+
+      const schedules = schedulesByBarber.get(barber.id) ?? [];
+      const appts = appointmentsByBarber.get(barber.id) ?? [];
+
+      for (const { key, date } of days) {
+        const schedule = schedules.find((s) => s.day_of_week === date.getDay());
+        if (schedule?.is_off) continue;
+
+        const dayEnd = new Date(date.getTime() + 86_400_000);
+        const dayAppts = appts.filter((a) => {
+          const t = new Date(a.start_time);
+          return t >= date && t < dayEnd;
+        });
+
+        const slots = generateDailySlots({
+          date,
+          salon,
+          barber,
+          service: shortest,
+          existingAppointments: dayAppts,
+          barberWorkingHours: schedule ? { start: schedule.start_time, end: schedule.end_time } : null,
+        });
+
+        const firstFree = slots.find((s) => s.isAvailable && s.start > now);
+        if (firstFree) return formatSlotLabel(key, firstFree.start);
+      }
+      return "Bu hafta müsait değil";
+    }
+
+    async function loadAvailability() {
+      try {
+        const barberIds = barbers.map((b) => b.id);
+        const salonIds = [...new Set(barbers.map((b) => b.salon_id))];
+        const todayStart = startOfDay(new Date());
+        const rangeEnd = new Date(todayStart.getTime() + 2 * 86_400_000);
+
+        const [salonsRes, servicesRes, schedulesRes, apptsRes] = await Promise.all([
+          supabase.from("salons").select("*").in("id", salonIds),
+          supabase.from("services").select("*").in("salon_id", salonIds).eq("is_active", true),
+          supabase.from("barber_schedules").select("*").in("barber_id", barberIds),
+          supabase
+            .from("appointments")
+            .select("*")
+            .in("barber_id", barberIds)
+            .in("status", ["pending", "confirmed"])
+            .gte("start_time", todayStart.toISOString())
+            .lt("start_time", rangeEnd.toISOString()),
+        ]);
+
+        if (cancelled) return;
+
+        const salonsById = new Map<string, Salon>();
+        for (const s of (salonsRes.data ?? []) as Salon[]) salonsById.set(s.id, s);
+
+        const servicesBySalon = new Map<string, Service[]>();
+        for (const s of (servicesRes.data ?? []) as Service[]) {
+          const arr = servicesBySalon.get(s.salon_id) ?? [];
+          arr.push(s);
+          servicesBySalon.set(s.salon_id, arr);
+        }
+
+        const schedulesByBarber = new Map<
+          string,
+          { day_of_week: number; start_time: string; end_time: string; is_off: boolean }[]
+        >();
+        for (const row of (schedulesRes.data ?? []) as {
+          barber_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          is_off: boolean;
+        }[]) {
+          const arr = schedulesByBarber.get(row.barber_id) ?? [];
+          arr.push(row);
+          schedulesByBarber.set(row.barber_id, arr);
+        }
+
+        const appointmentsByBarber = new Map<string, Appointment[]>();
+        for (const a of (apptsRes.data ?? []) as Appointment[]) {
+          const arr = appointmentsByBarber.get(a.barber_id) ?? [];
+          arr.push(a);
+          appointmentsByBarber.set(a.barber_id, arr);
+        }
+
+        const entries = await Promise.all(
+          barbers.map(async (b) => {
+            const label = await computeForBarber(
+              b,
+              salonsById,
+              servicesBySalon,
+              schedulesByBarber,
+              appointmentsByBarber
+            );
+            return [b.id, label] as const;
+          })
+        );
+        if (!cancelled) setAvailability(new Map(entries));
+      } catch {
+        // Müsaitlik hesaplanamazsa kartlar bilgisiz kalır.
+      }
+    }
+
+    loadAvailability();
+    return () => {
+      cancelled = true;
+    };
+  }, [barbers]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("tr-TR");
@@ -86,59 +268,84 @@ export default function DiscoverScreen() {
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <View style={styles.headerRow}>
-              <View style={[styles.avatar, { backgroundColor: colors.primary + "1A" }]}>
-                <Text style={[styles.avatarText, { color: colors.primary }]}>
-                  {initialsOf(item.user?.full_name)}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: colors.text }]}>{item.user?.full_name ?? "Berber"}</Text>
-                {item.salon?.name && (
-                  <Text style={[styles.salon, { color: colors.textMuted }]}>{item.salon.name}</Text>
+        renderItem={({ item }) => {
+          const rating = ratings.get(item.id);
+          const availabilityLabel = availability.get(item.id);
+          return (
+            <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <View style={styles.headerRow}>
+                {item.salon?.photo_url ? (
+                  <Image source={{ uri: item.salon.photo_url }} style={styles.salonPhoto} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: colors.primary + "1A" }]}>
+                    <Text style={[styles.avatarText, { color: colors.primary }]}>
+                      {initialsOf(item.user?.full_name)}
+                    </Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.name, { color: colors.text }]}>{item.user?.full_name ?? "Berber"}</Text>
+                  {item.salon?.name && (
+                    <Text style={[styles.salon, { color: colors.textMuted }]}>{item.salon.name}</Text>
+                  )}
+                </View>
+                {rating && rating.total > 0 ? (
+                  <View style={styles.ratingRow}>
+                    <Ionicons name="star" size={15} color="#F59E0B" />
+                    <Text style={[styles.ratingText, { color: colors.text }]}>{rating.avg.toFixed(1)}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.newBadge, { backgroundColor: colors.primary + "1A" }]}>
+                    <Text style={[styles.newBadgeText, { color: colors.primary }]}>Yeni</Text>
+                  </View>
                 )}
               </View>
-            </View>
 
-            {item.address && (
-              <View style={styles.addressRow}>
-                <Ionicons name="location-outline" size={15} color={colors.textMuted} />
-                <Text style={[styles.address, { color: colors.textMuted }]} numberOfLines={1}>
-                  {item.address}
-                </Text>
-              </View>
-            )}
+              {item.address && (
+                <View style={styles.addressRow}>
+                  <Ionicons name="location-outline" size={15} color={colors.textMuted} />
+                  <Text style={[styles.address, { color: colors.textMuted }]} numberOfLines={1}>
+                    {item.address}
+                  </Text>
+                </View>
+              )}
 
-            {item.latitude && item.longitude && (
-              <MapView
-                style={styles.map}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                pointerEvents="none"
-                initialRegion={{
-                  latitude: item.latitude,
-                  longitude: item.longitude,
-                  latitudeDelta: 0.02,
-                  longitudeDelta: 0.02,
-                }}
+              {availabilityLabel && (
+                <View style={styles.addressRow}>
+                  <Ionicons name="time-outline" size={15} color={colors.primary} />
+                  <Text style={[styles.availabilityText, { color: colors.primary }]}>{availabilityLabel}</Text>
+                </View>
+              )}
+
+              {item.latitude && item.longitude && (
+                <MapView
+                  style={styles.map}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  pointerEvents="none"
+                  initialRegion={{
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  }}
+                >
+                  <Marker coordinate={{ latitude: item.latitude, longitude: item.longitude }} />
+                </MapView>
+              )}
+
+              <ContactButtons phone={item.whatsapp_phone} />
+
+              <Pressable
+                style={[styles.bookButton, { backgroundColor: colors.primary }]}
+                onPress={() => router.push(`/booking/${item.id}` as never)}
               >
-                <Marker coordinate={{ latitude: item.latitude, longitude: item.longitude }} />
-              </MapView>
-            )}
-
-            <ContactButtons phone={item.whatsapp_phone} />
-
-            <Pressable
-              style={[styles.bookButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push(`/booking/${item.id}` as never)}
-            >
-              <Ionicons name="calendar-outline" size={16} color={colors.primaryText} />
-              <Text style={[styles.bookText, { color: colors.primaryText }]}>Randevu Al</Text>
-            </Pressable>
-          </View>
-        )}
+                <Ionicons name="calendar-outline" size={16} color={colors.primaryText} />
+                <Text style={[styles.bookText, { color: colors.primaryText }]}>Randevu Al</Text>
+              </Pressable>
+            </View>
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.primary + "14" }]}>
@@ -177,10 +384,16 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarText: { fontWeight: "700", fontSize: 16 },
+  salonPhoto: { width: 50, height: 50, borderRadius: 8 },
   name: { fontSize: 17, fontWeight: "700" },
   salon: { fontSize: 13, marginTop: 2 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  ratingText: { fontSize: 14, fontWeight: "700" },
+  newBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  newBadgeText: { fontSize: 12, fontWeight: "700" },
   addressRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   address: { fontSize: 13, flex: 1 },
+  availabilityText: { fontSize: 13, fontWeight: "600", flex: 1 },
   map: { width: "100%", height: 140, borderRadius: 14, marginTop: 2 },
   bookButton: {
     flexDirection: "row",

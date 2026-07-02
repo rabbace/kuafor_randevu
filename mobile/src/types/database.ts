@@ -20,6 +20,7 @@ export interface Salon {
   working_days: number[]; // 0=Pazar .. 6=Cumartesi
   theme_primary_color: string;
   theme_secondary_color: string;
+  photo_url?: string | null;
 }
 
 export interface Barber {
@@ -55,4 +56,5 @@ export interface Appointment {
   is_manual_entry: boolean;
   manual_customer_name: string | null;
   manual_customer_phone: string | null;
+  total_price?: number | null;
 }

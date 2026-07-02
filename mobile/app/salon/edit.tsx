@@ -1,13 +1,33 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
 
 const TIME_REGEX = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function base64ToBytes(base64: string): Uint8Array {
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, "");
+  const len = Math.floor((clean.length * 3) / 4);
+  const bytes = new Uint8Array(len);
+  let byteIndex = 0;
+  for (let i = 0; i < clean.length; i += 4) {
+    const c0 = BASE64_CHARS.indexOf(clean[i]);
+    const c1 = BASE64_CHARS.indexOf(clean[i + 1]);
+    const c2 = clean[i + 2] !== undefined ? BASE64_CHARS.indexOf(clean[i + 2]) : -1;
+    const c3 = clean[i + 3] !== undefined ? BASE64_CHARS.indexOf(clean[i + 3]) : -1;
+    bytes[byteIndex++] = (c0 << 2) | (c1 >> 4);
+    if (c2 >= 0) bytes[byteIndex++] = ((c1 & 15) << 4) | (c2 >> 2);
+    if (c3 >= 0) bytes[byteIndex++] = ((c2 & 3) << 6) | c3;
+  }
+  return bytes.slice(0, byteIndex);
+}
 
 export default function SalonEditScreen() {
   const user = useAuthStore((s) => s.user);
@@ -22,6 +42,8 @@ export default function SalonEditScreen() {
   const [bufferMinutes, setBufferMinutes] = useState("10");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("20:00");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -33,7 +55,7 @@ export default function SalonEditScreen() {
       }
       const { data: salon } = await supabase
         .from("salons")
-        .select("id, name, description, phone, address, buffer_time_minutes, start_time, end_time")
+        .select("*")
         .eq("owner_id", user.id)
         .maybeSingle();
 
@@ -46,11 +68,72 @@ export default function SalonEditScreen() {
         setBufferMinutes(String(salon.buffer_time_minutes ?? 10));
         setStartTime(String(salon.start_time ?? "09:00").slice(0, 5));
         setEndTime(String(salon.end_time ?? "20:00").slice(0, 5));
+        setPhotoUrl((salon as { photo_url?: string | null }).photo_url ?? null);
       }
       setIsLoading(false);
     }
     load();
   }, [user?.id]);
+
+  async function handlePickPhoto() {
+    if (!salonId) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("İzin Gerekli", "Fotoğraf seçmek için galeri izni vermelisin.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
+    });
+    if (result.canceled || !result.assets[0]?.base64) return;
+
+    setIsUploading(true);
+    try {
+      const path = `${salonId}/${Date.now()}.jpg`;
+      const bytes = base64ToBytes(result.assets[0].base64);
+
+      const { error: uploadError } = await supabase.storage
+        .from("salon-photos")
+        .upload(path, bytes.buffer as ArrayBuffer, { contentType: "image/jpeg", upsert: true });
+
+      if (uploadError) {
+        const bucketMissing = /bucket|not found/i.test(uploadError.message ?? "");
+        Alert.alert(
+          "Yüklenemedi",
+          bucketMissing
+            ? "Depolama alanı henüz yapılandırılmamış"
+            : "Fotoğraf yüklenirken bir hata oluştu. Lütfen tekrar dene."
+        );
+        return;
+      }
+
+      const { data: pub } = supabase.storage.from("salon-photos").getPublicUrl(path);
+      const url = pub.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("salons")
+        .update({ photo_url: url })
+        .eq("id", salonId);
+
+      if (updateError) {
+        Alert.alert("Kaydedilemedi", "Fotoğraf adresi kaydedilirken bir hata oluştu.");
+        return;
+      }
+
+      setPhotoUrl(url);
+      Alert.alert("Yüklendi", "Salon fotoğrafın güncellendi.");
+    } catch {
+      Alert.alert("Hata", "Depolama alanı henüz yapılandırılmamış");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function handleSave() {
     if (!user?.id || !salonId) return;
@@ -119,6 +202,28 @@ export default function SalonEditScreen() {
           </Text>
         ) : (
           <>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
+              <Text style={[styles.label, { color: colors.text }]}>Salon Fotoğrafı</Text>
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.salonPhoto} resizeMode="cover" />
+              ) : (
+                <View style={[styles.photoPlaceholder, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>Henüz fotoğraf eklenmemiş</Text>
+                </View>
+              )}
+              <Pressable
+                style={[styles.photoButton, { borderColor: colors.primary, opacity: isUploading ? 0.6 : 1 }]}
+                onPress={handlePickPhoto}
+                disabled={isUploading}
+              >
+                <Ionicons name="camera-outline" size={17} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                  {isUploading ? "Yükleniyor..." : "Fotoğraf Seç"}
+                </Text>
+              </Pressable>
+            </View>
+
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
               <Text style={[styles.label, { color: colors.text }]}>Salon Adı</Text>
               <TextInput
@@ -224,6 +329,26 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   timeInput: { flex: 1, textAlign: "center" },
   hint: { fontSize: 12 },
+  salonPhoto: { width: "100%", height: 160, borderRadius: 12 },
+  photoPlaceholder: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderRadius: 12,
+    height: 120,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  photoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
   saveButton: {
     flexDirection: "row",
     gap: 8,

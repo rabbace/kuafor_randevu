@@ -53,7 +53,8 @@
         "expo-build-properties",
         {
           "android": {
-            "extraProguardRules": "-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener\n-dontwarn android.media.LoudnessCodecController"
+            "enableProguardInReleaseBuilds": true,
+            "extraProguardRules": "-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener\n-dontwarn android.media.LoudnessCodecController\n-keep class expo.modules.** { *; }\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.swmansion.** { *; }\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }\n-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactProp *; }\n-keep class * extends com.facebook.react.bridge.JavaScriptModule { *; }\n-keep class * extends com.facebook.react.bridge.NativeModule { *; }\n-keep class * extends expo.modules.core.ExportedModule { *; }\n-keep class * extends expo.modules.core.ViewManager { *; }"
           }
         }
       ]

@@ -36,7 +36,11 @@ export default function RegisterScreen() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setIsLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: "kuaforrandevu://login" },
+    });
 
     if (error || !data.user) {
       setIsLoading(false);

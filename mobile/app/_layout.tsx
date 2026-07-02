@@ -113,7 +113,14 @@ export default function RootLayout() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
-        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
+          headerTitleStyle: { color: colors.text, fontWeight: "700" },
+          headerShadowVisible: false,
+        }}
       >
         <Stack.Screen name="onboarding/index" />
         <Stack.Screen name="(auth)" />

@@ -474,6 +474,7 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Hesabım</Text>
         </View>
         {[
+          { icon: "create-outline", label: "Profili Düzenle", route: "/profile/edit" },
           { icon: "gift-outline", label: "Sadakat Puanlarım", route: "/loyalty" },
           { icon: "people-outline", label: "Bekleme Listem", route: "/waitlist" },
         ].map((item) => (

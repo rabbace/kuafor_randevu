@@ -57,7 +57,7 @@ export function generateDailySlots(params: GenerateSlotsParams): TimeSlot[] {
   } = params;
 
   const dayOfWeek = date.getDay();
-  if (!salon.working_days.includes(dayOfWeek)) {
+  if (!salon.working_days?.includes(dayOfWeek)) {
     return [];
   }
 

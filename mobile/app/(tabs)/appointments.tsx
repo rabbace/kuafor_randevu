@@ -92,35 +92,42 @@ export default function AppointmentsScreen() {
   }, [appointments, isBarber]);
 
   async function loadAppointments() {
-    if (!user?.id) return;
-
-    if (isBarber) {
-      const { data: barberRow } = await supabase
-        .from("barbers")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setBarber(barberRow as Barber | null);
-
-      if (barberRow) {
-        const [{ data: appts }, { data: svc }] = await Promise.all([
-          supabase.from("appointments").select("*").eq("barber_id", barberRow.id).order("start_time"),
-          supabase.from("services").select("*").eq("salon_id", barberRow.salon_id),
-        ]);
-        setAppointments(appts ?? []);
-        setServices(svc ?? []);
-      }
+    if (!user?.id) {
       setIsLoading(false);
       return;
     }
 
-    const { data } = await supabase
-      .from("appointments")
-      .select("*")
-      .eq("customer_id", user.id)
-      .order("start_time", { ascending: true });
-    setAppointments(data ?? []);
-    setIsLoading(false);
+    try {
+      if (isBarber) {
+        const { data: barberRow } = await supabase
+          .from("barbers")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setBarber(barberRow as Barber | null);
+
+        if (barberRow) {
+          const [{ data: appts }, { data: svc }] = await Promise.all([
+            supabase.from("appointments").select("*").eq("barber_id", barberRow.id).order("start_time"),
+            supabase.from("services").select("*").eq("salon_id", barberRow.salon_id),
+          ]);
+          setAppointments(appts ?? []);
+          setServices(svc ?? []);
+        }
+        return;
+      }
+
+      const { data } = await supabase
+        .from("appointments")
+        .select("*")
+        .eq("customer_id", user.id)
+        .order("start_time", { ascending: true });
+      setAppointments(data ?? []);
+    } catch {
+      // Yükleme hatası sessizce yutulur; ekran boş liste gösterir.
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {

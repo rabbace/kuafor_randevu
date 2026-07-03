@@ -13,14 +13,25 @@ export interface Salon {
   id: string;
   owner_id: string;
   name: string;
+  description?: string | null;
   target_gender: SalonTargetGender;
+  address?: string | null;
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  logo_url?: string | null;
+  photo_url?: string | null;
+  phone?: string | null;
   start_time: string; // "09:00:00"
   end_time: string; // "20:00:00"
   buffer_time_minutes: number;
   working_days: number[]; // 0=Pazar .. 6=Cumartesi
   theme_primary_color: string;
   theme_secondary_color: string;
-  photo_url?: string | null;
+  is_active?: boolean;
+  loyalty_enabled?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Barber {
@@ -30,10 +41,12 @@ export interface Barber {
   title: string | null;
   speed_multiplier: number;
   auto_approve_appointments: boolean;
+  is_active?: boolean;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
   whatsapp_phone: string | null;
+  created_at?: string;
 }
 
 export interface Service {

@@ -155,11 +155,14 @@ export default function NewCampaignScreen() {
       }));
 
       for (let i = 0; i < messages.length; i += 100) {
-        await fetch("https://exp.host/--/api/v2/push/send", {
+        const res = await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(messages.slice(i, i + 100)),
         });
+        if (!res.ok) {
+          console.warn("Expo push API error", res.status);
+        }
       }
 
       Alert.alert("Gönderildi", `${tokens.length} kişiye bildirim gönderildi`);

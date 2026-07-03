@@ -62,7 +62,8 @@ export default function ProfileEditScreen() {
       return;
     }
 
-    setUser({ ...user, fullName: fullName.trim(), gender: (gender || null) as GenderType | null });
+    const savedGender = (gender === "male" || gender === "female") ? gender as GenderType : null;
+    setUser({ ...user, fullName: fullName.trim(), gender: savedGender });
     Alert.alert("Kaydedildi", "Profil bilgilerin güncellendi.", [
       { text: "Tamam", onPress: () => router.back() },
     ]);

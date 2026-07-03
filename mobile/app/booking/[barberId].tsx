@@ -208,31 +208,19 @@ export default function BookingScreen() {
         return;
       }
 
-      // Sadakat puanı hareketleri (hata olsa bile randevu oluşmuş sayılır).
+      // Sadakat puanı hareketleri: yalnızca puan kullanımı kaydedilir.
+      // Kazanım, randevu "completed" olduğunda DB trigger tarafından işlenir.
       try {
-        const appointmentId = created?.id ?? null;
-        const transactions: {
-          customer_id: string;
-          points_change: number;
-          reason: string;
-          appointment_id: string | null;
-        }[] = [
-          {
-            customer_id: user.id,
-            points_change: Math.floor(selectedService.price / 10),
-            reason: "Randevu oluşturuldu",
-            appointment_id: appointmentId,
-          },
-        ];
         if (usePoints && pointsToRedeem > 0) {
-          transactions.push({
+          const appointmentId = created?.id ?? null;
+          await supabase.from("loyalty_transactions").insert({
             customer_id: user.id,
+            salon_id: salon.id,
             points_change: -pointsToRedeem,
             reason: "Randevuda kullanıldı",
             appointment_id: appointmentId,
           });
         }
-        await supabase.from("loyalty_transactions").insert(transactions);
       } catch {
         // Puan işlemi başarısız olsa da randevu akışını bozma.
       }

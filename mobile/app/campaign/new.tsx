@@ -27,6 +27,7 @@ export default function NewCampaignScreen() {
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState<Target>("favorites");
   const [isSending, setIsSending] = useState(false);
+  const [recipientCount, setRecipientCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user?.id || !isBarber) return;
@@ -42,6 +43,13 @@ export default function NewCampaignScreen() {
         }
       });
   }, [user?.id, isBarber]);
+
+  // Hedef değişince alıcı sayısını önizle
+  useEffect(() => {
+    if (!barberId) return;
+    setRecipientCount(null);
+    fetchRecipientTokens().then((tokens) => setRecipientCount(tokens.length));
+  }, [barberId, target]);
 
   async function fetchRecipientTokens(): Promise<string[]> {
     if (!barberId) return [];
@@ -82,6 +90,36 @@ export default function NewCampaignScreen() {
     if (!message.trim()) {
       Alert.alert("Eksik Bilgi", "Bildirim mesajı zorunludur.");
       return;
+    }
+
+    // Rate limiting: son 7 günde max 2 kampanya, aralarında min 48 saat
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentCampaigns } = await supabase
+      .from("campaigns")
+      .select("sent_at")
+      .eq("salon_id", salonId)
+      .gte("sent_at", sevenDaysAgo)
+      .order("sent_at", { ascending: false });
+
+    if (recentCampaigns && recentCampaigns.length >= 2) {
+      Alert.alert(
+        "Gönderim Limiti",
+        "7 gün içinde en fazla 2 kampanya gönderebilirsin. Müşteri deneyimini korumak için bu limit uygulanmaktadır."
+      );
+      return;
+    }
+
+    if (recentCampaigns && recentCampaigns.length > 0) {
+      const lastSent = new Date(recentCampaigns[0].sent_at as string);
+      const hoursSinceLast = (Date.now() - lastSent.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLast < 48) {
+        const hoursLeft = Math.ceil(48 - hoursSinceLast);
+        Alert.alert(
+          "Çok Erken",
+          `Son kampanyanın üzerinden ${hoursLeft} saat daha geçmesi gerekiyor. Müşteriler çok sık bildirim almaktan rahatsız olur.`
+        );
+        return;
+      }
     }
 
     setIsSending(true);
@@ -237,6 +275,15 @@ export default function NewCampaignScreen() {
           ))}
         </View>
 
+        {recipientCount !== null && (
+          <View style={[styles.recipientInfo, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="people-outline" size={16} color={colors.primary} />
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>
+              Bu bildirim <Text style={{ color: colors.primary }}>{recipientCount} kişiye</Text> gidecek
+            </Text>
+          </View>
+        )}
+
         <Pressable
           style={[styles.sendButton, { backgroundColor: colors.primary, opacity: isSending || !barberId ? 0.7 : 1 }]}
           onPress={handleSend}
@@ -272,6 +319,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   presetButton: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  recipientInfo: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   sendButton: {
     flexDirection: "row",
     gap: 8,

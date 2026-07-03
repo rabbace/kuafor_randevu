@@ -1,9 +1,12 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function TabsLayout() {
   const colors = useThemeStore((s) => s.colors);
+  const user = useAuthStore((s) => s.user);
+  const isBarber = user?.role === "barber" || user?.role === "salon_owner";
 
   return (
     <Tabs
@@ -26,9 +29,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Keşfet",
+          title: isBarber ? "Dashboard" : "Keşfet",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "compass" : "compass-outline"} size={size} color={color} />
+            <Ionicons
+              name={isBarber ? (focused ? "grid" : "grid-outline") : focused ? "compass" : "compass-outline"}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />

@@ -4,7 +4,9 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker } from "react-native-maps";
 import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
+import { BarberDashboard } from "@/components/dashboard/BarberDashboard";
 import { ContactButtons } from "@/components/contact/ContactButtons";
 import { generateDailySlots } from "@/lib/slotCalculator";
 import type { Appointment, Barber, Salon, Service } from "@/types/database";
@@ -37,7 +39,17 @@ function formatSlotLabel(day: "today" | "tomorrow", slot: Date): string {
   return day === "today" ? `Bugün ${time}'da müsait` : `Yarın ${time}'da müsait`;
 }
 
-export default function DiscoverScreen() {
+export default function HomeScreen() {
+  const user = useAuthStore((s) => s.user);
+  const isBarber = user?.role === "barber" || user?.role === "salon_owner";
+
+  if (isBarber) {
+    return <BarberDashboard />;
+  }
+  return <DiscoverScreen />;
+}
+
+function DiscoverScreen() {
   const colors = useThemeStore((s) => s.colors);
   const [barbers, setBarbers] = useState<BarberWithMeta[]>([]);
   const [ratings, setRatings] = useState<Map<string, RatingInfo>>(new Map());

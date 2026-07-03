@@ -454,6 +454,7 @@ export default function ProfileScreen() {
             { icon: "time-outline", label: "Çalışma Saatleri", route: "/schedule" },
             { icon: "storefront-outline", label: "Salon Bilgilerini Düzenle", route: "/salon/edit" },
             { icon: "list-outline", label: "Bekleme Listesi", route: "/waitlist" },
+            { icon: "megaphone-outline", label: "Bildirim Gönder", route: "/campaign/new" },
           ].map((item) => (
             <Pressable
               key={item.route}

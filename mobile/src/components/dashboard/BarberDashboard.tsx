@@ -162,23 +162,37 @@ export function BarberDashboard() {
     );
   }
 
-  if (!barber || !barber.salons) {
+  if (!barber) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, padding: 32 }]}>
         <View style={[styles.emptyIcon, { backgroundColor: colors.primary + "14" }]}>
           <Ionicons name="storefront-outline" size={36} color={colors.primary} />
         </View>
-        <Text style={[styles.emptyTitle, { color: colors.text }]}>Salonunu henüz kurmamdın</Text>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>Profil tamamlanmamış</Text>
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-          Randevu almaya başlamak için önce salon bilgilerini tamamla.
+          Randevu almaya başlamak için önce berber profilini tamamla.
         </Text>
         <Pressable
           style={[styles.setupButton, { backgroundColor: colors.primary }]}
           onPress={() => router.push("/profile" as never)}
         >
           <Ionicons name="settings-outline" size={16} color="#fff" />
-          <Text style={styles.setupButtonText}>Salonunu Kur</Text>
+          <Text style={styles.setupButtonText}>Profile Git</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  if (!barber.salons) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background, padding: 32 }]}>
+        <View style={[styles.emptyIcon, { backgroundColor: "#F59E0B22" }]}>
+          <Ionicons name="link-outline" size={36} color="#D97706" />
+        </View>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz bir salona bağlı değilsiniz</Text>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+          Salon sahibi sizi salona ekledikten sonra burada randevularınızı görebilirsiniz.
+        </Text>
       </View>
     );
   }
@@ -191,6 +205,17 @@ export function BarberDashboard() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
     >
+      {/* Salon bilgi şeridi */}
+      <View style={[styles.salonBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Ionicons name="storefront-outline" size={16} color={colors.primary} />
+        <Text style={[styles.salonBadgeText, { color: colors.text }]} numberOfLines={1}>
+          {barber.salons.name}
+        </Text>
+        {barber.salons.city ? (
+          <Text style={[styles.salonBadgeCity, { color: colors.textMuted }]}>· {barber.salons.city}</Text>
+        ) : null}
+      </View>
+
       {/* Stats */}
       <LinearGradient colors={["#6D28D9", "#7C3AED"]} style={[styles.statsCard, cardShadow]}>
         <Text style={styles.statsTitle}>Genel Bakış</Text>
@@ -380,6 +405,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actionText: { color: "#fff", fontWeight: "600", fontSize: 13 },
+  salonBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  salonBadgeText: { fontWeight: "700", fontSize: 14, flex: 1 },
+  salonBadgeCity: { fontSize: 13 },
   emptyDay: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: 4 },

@@ -451,11 +451,14 @@ export default function ProfileScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Salon Yönetimi</Text>
           </View>
           {[
-            { icon: "time-outline", label: "Çalışma Saatleri", route: "/schedule" },
-            { icon: "storefront-outline", label: "Salon Bilgilerini Düzenle", route: "/salon/edit" },
-            { icon: "list-outline", label: "Bekleme Listesi", route: "/waitlist" },
-            { icon: "megaphone-outline", label: "Bildirim Gönder", route: "/campaign/new" },
-          ].map((item) => (
+            { icon: "time-outline", label: "Çalışma Saatleri", route: "/schedule", ownerOnly: false },
+            { icon: "storefront-outline", label: "Salon Bilgilerini Düzenle", route: "/salon/edit", ownerOnly: true },
+            { icon: "people-circle-outline", label: "Çalışanları Yönet", route: "/staff", ownerOnly: true },
+            { icon: "list-outline", label: "Bekleme Listesi", route: "/waitlist", ownerOnly: false },
+            { icon: "megaphone-outline", label: "Bildirim Gönder", route: "/campaign/new", ownerOnly: false },
+          ]
+            .filter((item) => !item.ownerOnly || user?.role === "salon_owner")
+            .map((item) => (
             <Pressable
               key={item.route}
               style={[styles.navRow, { borderColor: colors.border }]}

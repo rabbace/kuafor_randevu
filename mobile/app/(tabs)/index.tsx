@@ -51,6 +51,9 @@ export default function HomeScreen() {
 
 function DiscoverScreen() {
   const colors = useThemeStore((s) => s.colors);
+  const user = useAuthStore((s) => s.user);
+  const isCustomer = user?.role === "customer";
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [barbers, setBarbers] = useState<BarberWithMeta[]>([]);
   const [ratings, setRatings] = useState<Map<string, RatingInfo>>(new Map());
   const [availability, setAvailability] = useState<Map<string, string>>(new Map());
@@ -67,6 +70,41 @@ function DiscoverScreen() {
         setIsLoading(false);
       });
   }, []);
+
+  // Favori berberleri yükle.
+  useEffect(() => {
+    if (!user?.id || !isCustomer) return;
+    supabase
+      .from("favorite_barbers")
+      .select("barber_id")
+      .eq("customer_id", user.id)
+      .then(({ data }) => {
+        if (data) setFavorites(new Set((data as { barber_id: string }[]).map((r) => r.barber_id)));
+      });
+  }, [user?.id, isCustomer]);
+
+  async function toggleFavorite(barberId: string) {
+    if (!user?.id) return;
+    const isFav = favorites.has(barberId);
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(barberId);
+      else next.add(barberId);
+      return next;
+    });
+    const { error } = isFav
+      ? await supabase.from("favorite_barbers").delete().eq("customer_id", user.id).eq("barber_id", barberId)
+      : await supabase.from("favorite_barbers").insert({ customer_id: user.id, barber_id: barberId });
+    if (error) {
+      // Geri al.
+      setFavorites((prev) => {
+        const next = new Set(prev);
+        if (isFav) next.add(barberId);
+        else next.delete(barberId);
+        return next;
+      });
+    }
+  }
 
   // Puanları ikincil olarak yükle (view henüz oluşturulmamış olabilir).
   useEffect(() => {
@@ -285,7 +323,20 @@ function DiscoverScreen() {
           const availabilityLabel = availability.get(item.id);
           return (
             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              <View style={styles.headerRow}>
+              {isCustomer && (
+                <Pressable
+                  hitSlop={10}
+                  style={styles.favoriteButton}
+                  onPress={() => toggleFavorite(item.id)}
+                >
+                  <Ionicons
+                    name={favorites.has(item.id) ? "heart" : "heart-outline"}
+                    size={22}
+                    color={favorites.has(item.id) ? "#EF4444" : colors.textMuted}
+                  />
+                </Pressable>
+              )}
+              <View style={[styles.headerRow, isCustomer && { paddingRight: 28 }]}>
                 {item.salon?.photo_url ? (
                   <Image source={{ uri: item.salon.photo_url }} style={styles.salonPhoto} />
                 ) : (
@@ -393,6 +444,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 15 },
   card: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 12 },
+  favoriteButton: { position: "absolute", top: 14, right: 14, zIndex: 2 },
   headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarText: { fontWeight: "700", fontSize: 16 },

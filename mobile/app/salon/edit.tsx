@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -43,6 +43,8 @@ export default function SalonEditScreen() {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("20:00");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
+  const [isTogglingLoyalty, setIsTogglingLoyalty] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,6 +71,7 @@ export default function SalonEditScreen() {
         setStartTime(String(salon.start_time ?? "09:00").slice(0, 5));
         setEndTime(String(salon.end_time ?? "20:00").slice(0, 5));
         setPhotoUrl((salon as { photo_url?: string | null }).photo_url ?? null);
+        setLoyaltyEnabled((salon as { loyalty_enabled?: boolean }).loyalty_enabled ?? true);
       }
       setIsLoading(false);
     }
@@ -303,6 +306,39 @@ export default function SalonEditScreen() {
               <Text style={[styles.hint, { color: colors.textMuted }]}>Randevular arası tampon süre</Text>
             </View>
 
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
+              <Text style={[styles.label, { color: colors.text }]}>Sadakat Programı</Text>
+              <View style={styles.loyaltyRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
+                    {loyaltyEnabled ? "Sadakat programı açık" : "Sadakat programı kapalı"}
+                  </Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>
+                    Açıkken müşteriler her randevuda sadakat puanı kazanır.
+                  </Text>
+                </View>
+                <Switch
+                  value={loyaltyEnabled}
+                  disabled={isTogglingLoyalty}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  onValueChange={async (value) => {
+                    if (!salonId) return;
+                    setIsTogglingLoyalty(true);
+                    const { error } = await supabase
+                      .from("salons")
+                      .update({ loyalty_enabled: value })
+                      .eq("id", salonId);
+                    setIsTogglingLoyalty(false);
+                    if (error) {
+                      Alert.alert("Kaydedilemedi", "Sadakat programı ayarı güncellenirken bir hata oluştu.");
+                      return;
+                    }
+                    setLoyaltyEnabled(value);
+                  }}
+                />
+              </View>
+            </View>
+
             <Pressable
               style={[styles.saveButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
               onPress={handleSave}
@@ -329,6 +365,7 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   timeInput: { flex: 1, textAlign: "center" },
   hint: { fontSize: 12 },
+  loyaltyRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   salonPhoto: { width: "100%", height: 160, borderRadius: 12 },
   photoPlaceholder: {
     borderWidth: 1,

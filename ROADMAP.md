@@ -24,6 +24,18 @@
 - [ ] Skeleton loading (spinner yerine iskelet kartlar)
 - [ ] Randevu hatırlatma bildirimi (24 saat + 1 saat önce) — Edge Function cron
 
+## 🖥️ Altyapı / Taşınabilirlik (ücretsiz → kendi sunucusu)
+- [x] Tüm şema `supabase/migrations/` altında (0001–0016) — herhangi bir Postgres'e sıfırdan kurulabilir
+- [x] Haftalık otomatik DB yedeği workflow'u (`db-backup.yml`) — `SUPABASE_DB_URL` secret'ı ekleyince aktifleşir
+- [ ] Dashboard'dan yapılan her manuel ayarı burada belgele:
+  - Auth: URL Configuration (site url + redirect'ler), Google provider (client id/secret)
+  - Storage: `salon-photos` bucket (public)
+- [ ] **Uyarı eşiği:** Supabase free = 500 MB DB, 1 GB storage, 7 gün inaktivitede duraklatma.
+  DB 400 MB'ı veya günlük aktif kullanıcı ~1000'i geçince önce **Supabase Pro ($25/ay)** — self-host değil.
+- [ ] Self-host ancak çok büyük ölçekte mantıklı (Supabase açık kaynak, Docker ile kurulabilir;
+  mobil tarafta değişecek tek şey `app.json` içindeki `supabaseUrl` + `supabaseAnonKey`)
+- [ ] Storage taşıma: `salon-photos` S3 uyumlu — rclone ile kopyalanabilir
+
 ## 📈 Etki / Ölçüm
 - [ ] Basit analitik: kaç randevu, kaç iptal, doluluk oranı (berber dashboard'a haftalık grafik)
 - [ ] Müşteri tarafına "en çok gittiğin salon" özeti

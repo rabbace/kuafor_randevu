@@ -30,6 +30,7 @@ export interface Salon {
   theme_secondary_color: string;
   is_active?: boolean;
   loyalty_enabled?: boolean;
+  loyalty_redeem_amount?: number;
   created_at?: string;
   updated_at?: string;
 }

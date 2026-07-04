@@ -26,3 +26,9 @@ create policy "salon_photos_update" on storage.objects
 create policy "salon_photos_delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'salon-photos');
+
+-- ============================================================================
+-- Sadakat: 100 puanın TL karşılığını berber belirler (varsayılan 20 TL).
+-- ============================================================================
+alter table public.salons
+  add column if not exists loyalty_redeem_amount numeric(10,2) not null default 20;

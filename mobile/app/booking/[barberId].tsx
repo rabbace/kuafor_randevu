@@ -74,17 +74,18 @@ export default function BookingScreen() {
   }
 
   const loyaltyPoints = user?.loyaltyPoints ?? 0;
+  // 100 puanın TL değeri salon tarafından belirlenir (varsayılan 20).
+  const redeemValue = (salon as (Salon & { loyalty_redeem_amount?: number }) | null)?.loyalty_redeem_amount ?? 20;
   const { maxDiscount, pointsToRedeem } = useMemo(() => {
     if (totalPrice === 0) return { maxDiscount: 0, pointsToRedeem: 0 };
-    // 100 puan = 20 TL; toplam tutarı aşan birim kullanılmaz.
     const availableUnits = Math.floor(loyaltyPoints / 100);
-    const neededUnits = Math.ceil(totalPrice / 20);
+    const neededUnits = Math.ceil(totalPrice / redeemValue);
     const units = Math.min(availableUnits, neededUnits);
     return {
-      maxDiscount: Math.min(units * 20, totalPrice),
+      maxDiscount: Math.min(units * redeemValue, totalPrice),
       pointsToRedeem: units * 100,
     };
-  }, [loyaltyPoints, totalPrice]);
+  }, [loyaltyPoints, totalPrice, redeemValue]);
   const discount = usePoints ? maxDiscount : 0;
   const finalPrice = Math.max(0, totalPrice - discount);
 

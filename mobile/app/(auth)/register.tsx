@@ -52,8 +52,23 @@ export default function RegisterScreen() {
         message = "Bu e-posta adresiyle zaten bir hesap var. Giriş yapmayı dene.";
       } else if (error && /password/i.test(error.message)) {
         message = "Şifre gereksinimleri karşılanmıyor. Daha güçlü bir şifre dene.";
+      } else if (error && /rate limit/i.test(error.message)) {
+        message = "Çok fazla deneme yapıldı. Bir saat sonra tekrar dene.";
+      } else if (error && /network|fetch/i.test(error.message)) {
+        message = "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.";
+      } else if (error) {
+        // Teşhis için gerçek hata mesajını göster
+        message = `Kayıt oluşturulamadı: ${error.message}`;
       }
       setErrors({ form: message });
+      return;
+    }
+
+    // Supabase, e-posta onayı açıkken var olan adrese signUp yapılırsa hata
+    // dönmez; identities boş bir kullanıcı döner. Bunu yakala.
+    if (data.user.identities && data.user.identities.length === 0) {
+      setIsLoading(false);
+      setErrors({ form: "Bu e-posta adresiyle zaten bir hesap var. Giriş yapmayı dene." });
       return;
     }
 

@@ -74,10 +74,21 @@ export default function BookingScreen() {
   }
 
   const loyaltyPoints = user?.loyaltyPoints ?? 0;
-  // 100 puanın TL değeri salon tarafından belirlenir (varsayılan 20).
-  const redeemValue = (salon as (Salon & { loyalty_redeem_amount?: number }) | null)?.loyalty_redeem_amount ?? 20;
+  // Ödülü salon belirler: TL indirim (loyalty_redeem_amount) ya da özel ödül metni.
+  const salonLoyalty = salon as (Salon & {
+    loyalty_redeem_amount?: number;
+    loyalty_reward_type?: "discount" | "custom";
+    loyalty_reward_text?: string | null;
+  }) | null;
+  const rewardType = salonLoyalty?.loyalty_reward_type ?? "discount";
+  const rewardText = salonLoyalty?.loyalty_reward_text ?? null;
+  const redeemValue = salonLoyalty?.loyalty_redeem_amount ?? 20;
   const { maxDiscount, pointsToRedeem } = useMemo(() => {
     if (totalPrice === 0) return { maxDiscount: 0, pointsToRedeem: 0 };
+    if (rewardType === "custom") {
+      // Özel ödül: 100 puan = 1 ödül; fiyat değişmez, ödül notta belirtilir.
+      return { maxDiscount: 0, pointsToRedeem: loyaltyPoints >= 100 ? 100 : 0 };
+    }
     const availableUnits = Math.floor(loyaltyPoints / 100);
     const neededUnits = Math.ceil(totalPrice / redeemValue);
     const units = Math.min(availableUnits, neededUnits);
@@ -85,8 +96,10 @@ export default function BookingScreen() {
       maxDiscount: Math.min(units * redeemValue, totalPrice),
       pointsToRedeem: units * 100,
     };
-  }, [loyaltyPoints, totalPrice, redeemValue]);
-  const discount = usePoints ? maxDiscount : 0;
+  }, [loyaltyPoints, totalPrice, redeemValue, rewardType]);
+  const canRedeem =
+    loyaltyPoints >= 100 && (rewardType === "custom" ? !!rewardText : maxDiscount > 0);
+  const discount = usePoints && rewardType === "discount" ? maxDiscount : 0;
   const finalPrice = Math.max(0, totalPrice - discount);
 
   const days = useMemo(() => {
@@ -202,6 +215,11 @@ export default function BookingScreen() {
       // Çoklu hizmette ilk hizmet service_id olur; tamamı notes'a yazılır,
       // end_time toplam süreyi zaten kapsar (araya bekleme girmez).
       const serviceNames = selectedServices.map((s) => s.name).join(" + ");
+      const noteParts: string[] = [];
+      if (selectedServices.length > 1) noteParts.push(`Hizmetler: ${serviceNames}`);
+      if (usePoints && rewardType === "custom" && rewardText) {
+        noteParts.push(`Sadakat ödülü: ${rewardText} (100 puan)`);
+      }
       const { data: created, error } = await supabase
         .from("appointments")
         .insert({
@@ -212,7 +230,7 @@ export default function BookingScreen() {
           start_time: selectedSlot.start.toISOString(),
           end_time: selectedSlot.end.toISOString(),
           total_price: finalPrice,
-          notes: selectedServices.length > 1 ? `Hizmetler: ${serviceNames}` : null,
+          notes: noteParts.length > 0 ? noteParts.join(" · ") : null,
           status: "pending",
         })
         .select("id")
@@ -241,7 +259,10 @@ export default function BookingScreen() {
             customer_id: user.id,
             salon_id: salon.id,
             points_change: -pointsToRedeem,
-            reason: "Randevuda kullanıldı",
+            reason:
+              rewardType === "custom" && rewardText
+                ? `Ödül kullanıldı: ${rewardText}`
+                : "Randevuda indirim kullanıldı",
             appointment_id: appointmentId,
           });
         }
@@ -389,7 +410,7 @@ export default function BookingScreen() {
           />
         )}
 
-        {selectedServices.length > 0 && selectedSlot && loyaltyPoints >= 100 && maxDiscount > 0 && (
+        {selectedServices.length > 0 && selectedSlot && canRedeem && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Sadakat Puanı</Text>
             <Pressable
@@ -410,7 +431,9 @@ export default function BookingScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.loyaltyTitle, { color: colors.text }]}>
-                  Puanlarımı kullan ({pointsToRedeem} puan = {maxDiscount} TL indirim)
+                  {rewardType === "custom"
+                    ? `Puanlarımı kullan (100 puan = ${rewardText})`
+                    : `Puanlarımı kullan (${pointsToRedeem} puan = ${maxDiscount} TL indirim)`}
                 </Text>
                 <Text style={[styles.loyaltyHint, { color: colors.textMuted }]}>
                   Mevcut puanın: {loyaltyPoints}

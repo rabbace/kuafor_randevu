@@ -23,7 +23,7 @@ interface GenerateSlotsParams {
   date: Date; // gün (saat kısmı önemsiz)
   salon: Salon;
   barber: Barber;
-  service: Service;
+  services: Service[]; // birden fazla hizmet art arda, aralarında bekleme olmadan yapılır
   existingAppointments: Appointment[]; // o berberin o günkü randevuları (pending + confirmed)
   slotIntervalMinutes?: number; // slot listesi kaç dakikalık adımlarla taranacak
   barberWorkingHours?: { start: string; end: string } | null; // salon saatlerini override eder
@@ -50,11 +50,13 @@ export function generateDailySlots(params: GenerateSlotsParams): TimeSlot[] {
     date,
     salon,
     barber,
-    service,
+    services,
     existingAppointments,
     slotIntervalMinutes = 15,
     barberWorkingHours,
   } = params;
+
+  if (services.length === 0) return [];
 
   const dayOfWeek = date.getDay();
   if (!salon.working_days?.includes(dayOfWeek)) {
@@ -64,10 +66,9 @@ export function generateDailySlots(params: GenerateSlotsParams): TimeSlot[] {
   const workStart = parseTimeOnDate(date, barberWorkingHours?.start ?? salon.start_time);
   const workEnd = parseTimeOnDate(date, barberWorkingHours?.end ?? salon.end_time);
 
-  const finalDuration = calculateFinalDuration(
-    service.base_duration_minutes,
-    barber.speed_multiplier
-  );
+  // Hizmetler art arda tek blokta yapılır: toplam temel süre × hız çarpanı.
+  const totalBaseDuration = services.reduce((sum, s) => sum + s.base_duration_minutes, 0);
+  const finalDuration = calculateFinalDuration(totalBaseDuration, barber.speed_multiplier);
   const bufferMs = salon.buffer_time_minutes * 60_000;
   const durationMs = finalDuration * 60_000;
 

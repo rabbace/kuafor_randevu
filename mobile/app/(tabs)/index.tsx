@@ -182,7 +182,7 @@ function DiscoverScreen() {
           date,
           salon,
           barber,
-          service: shortest,
+          services: [shortest],
           existingAppointments: dayAppts,
           barberWorkingHours: schedule ? { start: schedule.start_time, end: schedule.end_time } : null,
         });

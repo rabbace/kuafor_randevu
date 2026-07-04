@@ -19,14 +19,22 @@ const PRODUCTION_INTERSTITIAL_ID = Platform.select({
 
 // react-native-google-mobile-ads, import edildiği anda native modülü eagerly çözümlediği
 // için Expo Go'da çökmemesi amacıyla TestIds'e de yalnızca gerektiğinde (lazy) erişiyoruz.
+// Placeholder ("XXXX...") ID'ler gerçek değerlerle değiştirilene kadar test
+// reklamlarına düş; geçersiz ID release build'de reklam yükleme hatası üretir.
+function isPlaceholder(id: string): boolean {
+  return id.includes("XXXX");
+}
+
 export function getBannerAdUnitId(): string {
   if (isExpoGo) return "";
   const { TestIds } = require("react-native-google-mobile-ads");
-  return __DEV__ ? TestIds.BANNER : PRODUCTION_BANNER_ID;
+  return __DEV__ || isPlaceholder(PRODUCTION_BANNER_ID) ? TestIds.BANNER : PRODUCTION_BANNER_ID;
 }
 
 export function getInterstitialAdUnitId(): string {
   if (isExpoGo) return "";
   const { TestIds } = require("react-native-google-mobile-ads");
-  return __DEV__ ? TestIds.INTERSTITIAL : PRODUCTION_INTERSTITIAL_ID;
+  return __DEV__ || isPlaceholder(PRODUCTION_INTERSTITIAL_ID)
+    ? TestIds.INTERSTITIAL
+    : PRODUCTION_INTERSTITIAL_ID;
 }

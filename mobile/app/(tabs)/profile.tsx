@@ -31,6 +31,7 @@ function initialsOf(name: string | null | undefined) {
 
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const signOut = useAuthStore((s) => s.signOut);
   const colors = useThemeStore((s) => s.colors);
   const setMode = useThemeStore((s) => s.setMode);
@@ -135,6 +136,16 @@ export default function ProfileScreen() {
     if (barberError || !newBarber) {
       Alert.alert("Berber Profili Oluşturulamadı", "Berber profili kaydedilirken bir hata oluştu. Lütfen tekrar dene.");
       return;
+    }
+
+    // Salonu kuran kişi salon sahibidir: rolünü yükselt ki çalışan yönetimi
+    // ve salon düzenleme menüleri görünsün.
+    if (user.role !== "salon_owner") {
+      const { error: roleError } = await supabase
+        .from("users")
+        .update({ role: "salon_owner" })
+        .eq("id", user.id);
+      if (!roleError) setUser({ ...user, role: "salon_owner" });
     }
 
     setBarber(newBarber as Barber);

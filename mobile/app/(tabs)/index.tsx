@@ -39,6 +39,21 @@ function formatSlotLabel(day: "today" | "tomorrow", slot: Date): string {
   return day === "today" ? `Bugün ${time}'da müsait` : `Yarın ${time}'da müsait`;
 }
 
+/** İki koordinat arası kuş uçuşu mesafe (km) — Haversine formülü. */
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
+
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const isBarber = user?.role === "barber" || user?.role === "salon_owner";
@@ -59,6 +74,7 @@ function DiscoverScreen() {
   const [availability, setAvailability] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [myLocation, setMyLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
     supabase
@@ -69,6 +85,30 @@ function DiscoverScreen() {
         setBarbers((data ?? []) as unknown as BarberWithMeta[]);
         setIsLoading(false);
       });
+  }, []);
+
+  // Konum izni iste; verilirse berberleri yakınlığa göre sırala.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const Location = require("expo-location");
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (!cancelled) {
+          setMyLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        }
+      } catch {
+        // Konum alınamazsa liste sıralamasız devam eder.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Favori berberleri yükle.
@@ -272,14 +312,32 @@ function DiscoverScreen() {
     };
   }, [barbers]);
 
+  // Mesafeleri hesapla (konum izni verildiyse).
+  const distances = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!myLocation) return map;
+    for (const b of barbers) {
+      if (b.latitude != null && b.longitude != null) {
+        map.set(b.id, distanceKm(myLocation.lat, myLocation.lon, b.latitude, b.longitude));
+      }
+    }
+    return map;
+  }, [barbers, myLocation]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("tr-TR");
-    if (!q) return barbers;
-    return barbers.filter((b) => {
-      const haystack = `${b.user?.full_name ?? ""} ${b.salon?.name ?? ""} ${b.address ?? ""}`.toLocaleLowerCase("tr-TR");
-      return haystack.includes(q);
-    });
-  }, [barbers, query]);
+    const list = !q
+      ? [...barbers]
+      : barbers.filter((b) => {
+          const haystack = `${b.user?.full_name ?? ""} ${b.salon?.name ?? ""} ${b.address ?? ""}`.toLocaleLowerCase("tr-TR");
+          return haystack.includes(q);
+        });
+    // Yakın berberler önce; konumu olmayanlar listenin sonunda.
+    if (distances.size > 0) {
+      list.sort((a, b) => (distances.get(a.id) ?? Infinity) - (distances.get(b.id) ?? Infinity));
+    }
+    return list;
+  }, [barbers, query, distances]);
 
   if (isLoading) {
     return (
@@ -321,6 +379,7 @@ function DiscoverScreen() {
         renderItem={({ item }) => {
           const rating = ratings.get(item.id);
           const availabilityLabel = availability.get(item.id);
+          const distance = distances.get(item.id);
           return (
             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               {isCustomer && (
@@ -364,12 +423,21 @@ function DiscoverScreen() {
                 )}
               </View>
 
-              {item.address && (
+              {(item.address || distance != null) && (
                 <View style={styles.addressRow}>
                   <Ionicons name="location-outline" size={15} color={colors.textMuted} />
-                  <Text style={[styles.address, { color: colors.textMuted }]} numberOfLines={1}>
-                    {item.address}
-                  </Text>
+                  {distance != null && (
+                    <View style={[styles.distanceBadge, { backgroundColor: colors.primary + "1A" }]}>
+                      <Text style={[styles.distanceText, { color: colors.primary }]}>
+                        {formatDistance(distance)}
+                      </Text>
+                    </View>
+                  )}
+                  {item.address ? (
+                    <Text style={[styles.address, { color: colors.textMuted }]} numberOfLines={1}>
+                      {item.address}
+                    </Text>
+                  ) : null}
                 </View>
               )}
 
@@ -457,6 +525,8 @@ const styles = StyleSheet.create({
   newBadgeText: { fontSize: 12, fontWeight: "700" },
   addressRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   address: { fontSize: 13, flex: 1 },
+  distanceBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  distanceText: { fontSize: 12, fontWeight: "700" },
   availabilityText: { fontSize: 13, fontWeight: "600", flex: 1 },
   map: { width: "100%", height: 140, borderRadius: 14, marginTop: 2 },
   bookButton: {

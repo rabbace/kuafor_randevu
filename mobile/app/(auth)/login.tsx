@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
+import { signInWithGoogle } from "@/lib/oauth";
 import { useThemeStore } from "@/store/useThemeStore";
 
 export default function LoginScreen() {
@@ -38,12 +39,33 @@ export default function LoginScreen() {
     router.replace("/(tabs)" as never);
   }
 
-  async function handleOAuthLogin(provider: "google" | "apple") {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: "kuaforrandevu://auth-callback" },
+  async function handleGoogleLogin() {
+    setIsLoading(true);
+    const result = await signInWithGoogle();
+    setIsLoading(false);
+    if (result.ok) {
+      router.replace("/(tabs)" as never);
+      return;
+    }
+    if (result.error) Alert.alert("Giriş Hatası", result.error);
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setErrors({ email: "Şifre sıfırlamak için önce e-postanı yaz." });
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: "kuaforrandevu://reset-password",
     });
-    if (error) Alert.alert("Giriş Hatası", "Bu yöntemle giriş yapılamadı. Lütfen tekrar dene.");
+    if (error) {
+      Alert.alert("Gönderilemedi", "Sıfırlama e-postası gönderilemedi. Adresi kontrol edip tekrar dene.");
+      return;
+    }
+    Alert.alert(
+      "E-posta Gönderildi",
+      "Şifre sıfırlama bağlantısı e-postana gönderildi. Bağlantıya telefonundan tıkla."
+    );
   }
 
   return (
@@ -96,6 +118,10 @@ export default function LoginScreen() {
               />
             </Field>
             {errors.password && <Text style={[styles.errorText, { color: colors.danger }]}>{errors.password}</Text>}
+
+            <Pressable onPress={handleForgotPassword} hitSlop={6}>
+              <Text style={[styles.forgotLink, { color: colors.primary }]}>Şifremi unuttum</Text>
+            </Pressable>
             {errors.form && (
               <View style={[styles.formErrorBox, { backgroundColor: colors.danger + "14", borderColor: colors.danger + "44" }]}>
                 <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
@@ -117,17 +143,11 @@ export default function LoginScreen() {
 
             <Pressable
               style={[styles.oauthButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-              onPress={() => handleOAuthLogin("google")}
+              onPress={handleGoogleLogin}
+              disabled={isLoading}
             >
               <Ionicons name="logo-google" size={17} color={colors.text} />
               <Text style={[styles.oauthText, { color: colors.text }]}>Google ile Giriş Yap</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.oauthButton, { borderColor: colors.border, backgroundColor: colors.background }]}
-              onPress={() => handleOAuthLogin("apple")}
-            >
-              <Ionicons name="logo-apple" size={18} color={colors.text} />
-              <Text style={[styles.oauthText, { color: colors.text }]}>Apple ile Giriş Yap</Text>
             </Pressable>
 
             <Pressable onPress={() => router.push("/(auth)/register" as never)}>
@@ -213,6 +233,7 @@ const styles = StyleSheet.create({
   },
   oauthText: { fontWeight: "600", fontSize: 14 },
   registerLink: { textAlign: "center", marginTop: 8, fontSize: 13 },
+  forgotLink: { textAlign: "right", fontSize: 13, fontWeight: "600", marginTop: -4 },
   errorText: { fontSize: 12, marginTop: -6, marginLeft: 6 },
   formErrorBox: {
     flexDirection: "row",

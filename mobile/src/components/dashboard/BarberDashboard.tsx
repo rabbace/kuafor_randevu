@@ -268,7 +268,7 @@ export function BarberDashboard() {
       </View>
 
       {/* Stats */}
-      <LinearGradient colors={["#6D28D9", "#7C3AED"]} style={[styles.statsCard, cardShadow]}>
+      <LinearGradient colors={colors.gradient} style={[styles.statsCard, cardShadow]}>
         <Text style={styles.statsTitle}>Genel Bakış</Text>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>

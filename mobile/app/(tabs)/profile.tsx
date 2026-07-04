@@ -9,6 +9,7 @@ import { registerForPushNotificationsAsync } from "@/lib/pushNotifications";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
+import { ACCENT_PALETTES } from "@/theme/colors";
 import type { Barber, Service } from "@/types/database";
 
 const DEFAULT_REGION = { latitude: 41.0082, longitude: 28.9784 }; // İstanbul
@@ -36,6 +37,9 @@ export default function ProfileScreen() {
   const colors = useThemeStore((s) => s.colors);
   const setMode = useThemeStore((s) => s.setMode);
   const mode = useThemeStore((s) => s.mode);
+  const accentKey = useThemeStore((s) => s.accentKey);
+  const setAccent = useThemeStore((s) => s.setAccent);
+  const isDark = useThemeStore((s) => s.isDark);
   // salon_owner da salon sahibi bir berberdir; aynı yönetim arayüzünü görür.
   const isBarberRole = user?.role === "barber" || user?.role === "salon_owner";
 
@@ -268,7 +272,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
-      <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.profileHeader}>
+      <LinearGradient colors={colors.gradient} style={styles.profileHeader}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initialsOf(user?.fullName)}</Text>
         </View>
@@ -315,6 +319,28 @@ export default function ProfileScreen() {
               </Text>
             </Pressable>
           ))}
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 14 }]}>Vurgu Rengi</Text>
+        <View style={styles.accentRow}>
+          {ACCENT_PALETTES.map((p) => {
+            const active = accentKey === p.key;
+            return (
+              <Pressable
+                key={p.key}
+                onPress={() => setAccent(p.key)}
+                style={[
+                  styles.accentSwatch,
+                  {
+                    backgroundColor: isDark ? p.dark : p.light,
+                    borderColor: active ? colors.text : "transparent",
+                  },
+                ]}
+              >
+                {active && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -598,6 +624,15 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12 },
   sectionLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   themeRow: { flexDirection: "row", gap: 8 },
+  accentRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  accentSwatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   themeOption: {
     flex: 1,
     flexDirection: "row",

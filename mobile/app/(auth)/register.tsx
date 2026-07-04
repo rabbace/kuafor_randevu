@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
+import { signInWithGoogle } from "@/lib/oauth";
 import { useThemeStore } from "@/store/useThemeStore";
 import type { UserRole } from "@/types/database";
 
@@ -96,6 +97,27 @@ export default function RegisterScreen() {
       return;
     }
 
+    router.replace("/(tabs)" as never);
+  }
+
+  async function handleGoogleRegister() {
+    setIsLoading(true);
+    const result = await signInWithGoogle();
+    if (!result.ok) {
+      setIsLoading(false);
+      if (result.error) Alert.alert("Kayıt Hatası", result.error);
+      return;
+    }
+
+    // Google'dan rol bilgisi gelmez; ekranda seçilen rolü profile işle.
+    if (role !== "customer") {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authId = sessionData.session?.user.id;
+      if (authId) {
+        await supabase.from("users").update({ role }).eq("auth_id", authId);
+      }
+    }
+    setIsLoading(false);
     router.replace("/(tabs)" as never);
   }
 
@@ -204,6 +226,21 @@ export default function RegisterScreen() {
               <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>{isLoading ? "Kaydediliyor..." : "Kayıt Ol"}</Text>
               </LinearGradient>
+            </Pressable>
+
+            <View style={styles.dividerRow}>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>veya</Text>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            </View>
+
+            <Pressable
+              style={[styles.oauthButton, { borderColor: colors.border, backgroundColor: colors.background }]}
+              onPress={handleGoogleRegister}
+              disabled={isLoading}
+            >
+              <Ionicons name="logo-google" size={17} color={colors.text} />
+              <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>Google ile Kayıt Ol</Text>
             </Pressable>
 
             <Pressable onPress={() => router.push("/(auth)/login" as never)}>
@@ -317,6 +354,17 @@ const styles = StyleSheet.create({
   primaryButton: { paddingVertical: 15, alignItems: "center" },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   loginLink: { textAlign: "center", marginTop: 12, fontSize: 13 },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 2 },
+  divider: { flex: 1, height: 1 },
+  oauthButton: {
+    flexDirection: "row",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   errorText: { fontSize: 12, marginTop: -6, marginLeft: 6 },
   formErrorBox: {
     flexDirection: "row",

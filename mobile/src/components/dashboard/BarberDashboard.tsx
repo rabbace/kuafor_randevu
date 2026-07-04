@@ -3,11 +3,24 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
 import type { Appointment, Barber, Salon } from "@/types/database";
+
+LocaleConfig.locales.tr = {
+  monthNames: [
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+  ],
+  monthNamesShort: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"],
+  dayNames: ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"],
+  dayNamesShort: ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"],
+  today: "Bugün",
+};
+LocaleConfig.defaultLocale = "tr";
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   pending: { label: "Onay Bekliyor", color: "#B45309", bg: "#FEF3C7" },
@@ -45,6 +58,18 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function toDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function fromDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function BarberDashboard() {
   const user = useAuthStore((s) => s.user);
   const colors = useThemeStore((s) => s.colors);
@@ -53,16 +78,11 @@ export function BarberDashboard() {
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-
-  const weekDays = useMemo(() => {
-    const today = startOfDay(new Date());
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-  }, []);
+  const [selectedDayKey, setSelectedDayKey] = useState(() => toDateKey(new Date()));
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
 
   const loadData = useCallback(async () => {
     if (!user?.id) {
@@ -82,17 +102,21 @@ export function BarberDashboard() {
       return;
     }
 
-    const weekStart = startOfDay(new Date());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
+    // Görünen ayın tamamı + istatistikler için bugünden 7 gün sonrası.
+    const monthStart = new Date(visibleMonth.year, visibleMonth.month, 1);
+    const monthEnd = new Date(visibleMonth.year, visibleMonth.month + 1, 1);
+    const today = startOfDay(new Date());
+    const weekEnd = new Date(today.getTime() + 7 * 86_400_000);
+    const rangeStart = monthStart < today ? monthStart : today;
+    const rangeEnd = monthEnd > weekEnd ? monthEnd : weekEnd;
 
     const [apptsRes, schedulesRes] = await Promise.all([
       supabase
         .from("appointments")
         .select("*, services(name, base_duration_minutes)")
         .eq("barber_id", (barberRow as BarberWithSalon).id)
-        .gte("start_time", weekStart.toISOString())
-        .lt("start_time", weekEnd.toISOString())
+        .gte("start_time", rangeStart.toISOString())
+        .lt("start_time", rangeEnd.toISOString())
         .order("start_time"),
       supabase.from("barber_schedules").select("*").eq("barber_id", (barberRow as BarberWithSalon).id),
     ]);
@@ -100,7 +124,7 @@ export function BarberDashboard() {
     setAppointments((apptsRes.data ?? []) as AppointmentWithService[]);
     setSchedules((schedulesRes.data ?? []) as BarberSchedule[]);
     setIsLoading(false);
-  }, [user?.id]);
+  }, [user?.id, visibleMonth.year, visibleMonth.month]);
 
   useEffect(() => {
     loadData();
@@ -128,8 +152,9 @@ export function BarberDashboard() {
   }
 
   const stats = useMemo(() => {
-    const today = weekDays[0];
+    const today = startOfDay(new Date());
     const tomorrow = new Date(today.getTime() + 86_400_000);
+    const weekEnd = new Date(today.getTime() + 7 * 86_400_000);
     const todays = appointments.filter((a) => {
       const t = new Date(a.start_time);
       return t >= today && t < tomorrow;
@@ -138,17 +163,43 @@ export function BarberDashboard() {
     const next = appointments.find(
       (a) => activeStatuses.includes(a.status) && new Date(a.start_time) > now
     );
+    const weekTotal = appointments.filter((a) => {
+      const t = new Date(a.start_time);
+      return t >= today && t < weekEnd;
+    }).length;
     return {
       todayCount: todays.length,
       nextLabel: next ? timeLabel(next.start_time) : "Yok",
-      weekTotal: appointments.length,
+      weekTotal,
     };
-  }, [appointments, weekDays]);
+  }, [appointments]);
+
+  // Takvim işaretleri: kırmızı = randevu var, yeşil = müsait, gri nokta yok = kapalı.
+  const markedDates = useMemo(() => {
+    const marks: Record<string, object> = {};
+    const daysInMonth = new Date(visibleMonth.year, visibleMonth.month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(visibleMonth.year, visibleMonth.month, d);
+      const key = toDateKey(date);
+      const state = dayState(date);
+      marks[key] = {
+        marked: state !== "off",
+        dotColor: state === "busy" ? "#DC2626" : "#16A34A",
+        disabled: false,
+      };
+    }
+    marks[selectedDayKey] = {
+      ...(marks[selectedDayKey] ?? {}),
+      selected: true,
+      selectedColor: colors.primary,
+    };
+    return marks;
+  }, [appointments, schedules, barber, visibleMonth, selectedDayKey, colors.primary]);
 
   async function updateStatus(appointmentId: string, status: string) {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
     if (error) {
-      Alert.alert("Güncellenemedi", "Randevu durumu güncellenirken bir hata oluştu.");
+      Alert.alert("Güncellenemedi", `Randevu durumu güncellenirken bir hata oluştu.\n\n${error.message}`);
       return;
     }
     loadData();
@@ -197,7 +248,7 @@ export function BarberDashboard() {
     );
   }
 
-  const selectedDay = weekDays[selectedDayIndex];
+  const selectedDay = fromDateKey(selectedDayKey);
   const selectedAppointments = appointmentsForDay(selectedDay);
 
   return (
@@ -235,36 +286,45 @@ export function BarberDashboard() {
         </View>
       </LinearGradient>
 
-      {/* Weekly calendar strip */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {weekDays.map((day, i) => {
-          const state = dayState(day);
-          const selected = i === selectedDayIndex;
-          const dotColor = state === "busy" ? "#DC2626" : state === "available" ? "#16A34A" : colors.border;
-          return (
-            <Pressable
-              key={day.toISOString()}
-              onPress={() => setSelectedDayIndex(i)}
-              style={[
-                styles.dayCell,
-                {
-                  backgroundColor: selected ? colors.primary : colors.surface,
-                  borderColor: selected ? colors.primary : colors.border,
-                  opacity: state === "off" && !selected ? 0.55 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.dayName, { color: selected ? "#fff" : colors.textMuted }]}>
-                {DAY_NAMES[day.getDay()]}
-              </Text>
-              <Text style={[styles.dayNumber, { color: selected ? "#fff" : colors.text }]}>
-                {day.getDate()}
-              </Text>
-              <View style={[styles.dot, { backgroundColor: dotColor }]} />
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* Aylık takvim */}
+      <View style={[styles.calendarWrap, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
+        <Calendar
+          current={`${visibleMonth.year}-${String(visibleMonth.month + 1).padStart(2, "0")}-01`}
+          markedDates={markedDates}
+          onDayPress={(day: { dateString: string }) => setSelectedDayKey(day.dateString)}
+          onMonthChange={(m: { year: number; month: number }) =>
+            setVisibleMonth({ year: m.year, month: m.month - 1 })
+          }
+          firstDay={1}
+          enableSwipeMonths
+          theme={{
+            calendarBackground: "transparent",
+            dayTextColor: colors.text,
+            monthTextColor: colors.text,
+            textSectionTitleColor: colors.textMuted,
+            todayTextColor: colors.primary,
+            selectedDayTextColor: "#fff",
+            arrowColor: colors.primary,
+            textDisabledColor: colors.textMuted + "55",
+            textDayFontWeight: "600",
+            textMonthFontWeight: "800",
+          }}
+        />
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: "#DC2626" }]} />
+            <Text style={[styles.legendText, { color: colors.textMuted }]}>Randevu var</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: "#16A34A" }]} />
+            <Text style={[styles.legendText, { color: colors.textMuted }]}>Müsait</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: colors.border }]} />
+            <Text style={[styles.legendText, { color: colors.textMuted }]}>Kapalı</Text>
+          </View>
+        </View>
+      </View>
 
       {/* Selected day appointments */}
       <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
@@ -370,16 +430,10 @@ const styles = StyleSheet.create({
   },
   statValue: { color: "#fff", fontSize: 16, fontWeight: "800", textAlign: "center" },
   statLabel: { color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "600", textAlign: "center" },
-  dayCell: {
-    width: 62,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 12,
-    alignItems: "center",
-    gap: 4,
-  },
-  dayName: { fontSize: 12, fontWeight: "600" },
-  dayNumber: { fontSize: 18, fontWeight: "800" },
+  calendarWrap: { borderWidth: 1, borderRadius: 18, padding: 8, gap: 4 },
+  legendRow: { flexDirection: "row", justifyContent: "center", gap: 16, paddingBottom: 8 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendText: { fontSize: 12 },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 2 },
   sectionHeader: {
     fontSize: 12,

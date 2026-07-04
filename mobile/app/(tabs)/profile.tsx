@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,6 +45,36 @@ export default function ProfileScreen() {
   const [whatsapp, setWhatsapp] = useState("");
   const [position, setPosition] = useState<LatLng>(DEFAULT_REGION);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const mapRef = useRef<MapView>(null);
+
+  // Yazılan adresi koordinata çevirip haritayı oraya taşı.
+  async function handleGeocodeAddress() {
+    if (!address.trim()) {
+      Alert.alert("Adres Gerekli", "Önce adres alanını doldur.");
+      return;
+    }
+    setIsGeocoding(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Location = require("expo-location");
+      const results = await Location.geocodeAsync(address.trim());
+      if (!results || results.length === 0) {
+        Alert.alert("Bulunamadı", "Bu adres haritada bulunamadı. Daha genel bir adres dene (mahalle, ilçe, şehir).");
+        return;
+      }
+      const { latitude, longitude } = results[0];
+      setPosition({ latitude, longitude });
+      mapRef.current?.animateToRegion(
+        { latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        600
+      );
+    } catch {
+      Alert.alert("Hata", "Adres aranırken bir sorun oluştu.");
+    } finally {
+      setIsGeocoding(false);
+    }
+  }
 
   // Salon kurulum (onboarding)
   const [salonName, setSalonName] = useState("");
@@ -416,13 +446,27 @@ export default function ProfileScreen() {
             Haritada konumunu sürükleyerek ayarlayabilirsin. Müşteriler bu konumu görecek.
           </Text>
 
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-            placeholder="Adres"
-            placeholderTextColor={colors.textMuted}
-            value={address}
-            onChangeText={setAddress}
-          />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
+              placeholder="Adres"
+              placeholderTextColor={colors.textMuted}
+              value={address}
+              onChangeText={setAddress}
+              onSubmitEditing={handleGeocodeAddress}
+              returnKeyType="search"
+            />
+            <Pressable
+              style={[styles.geocodeButton, { backgroundColor: colors.primary, opacity: isGeocoding ? 0.7 : 1 }]}
+              onPress={handleGeocodeAddress}
+              disabled={isGeocoding}
+            >
+              <Ionicons name={isGeocoding ? "hourglass-outline" : "navigate-outline"} size={18} color="#fff" />
+            </Pressable>
+          </View>
+          <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+            Adresi yazıp sağdaki butona bas; harita otomatik konumlanır. Gerekirse iğneyi sürükleyerek ince ayar yap.
+          </Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
             placeholder="WhatsApp Numarası"
@@ -433,6 +477,7 @@ export default function ProfileScreen() {
           />
 
           <MapView
+            ref={mapRef}
             style={styles.map}
             initialRegion={{
               latitude: position.latitude,
@@ -584,6 +629,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
   map: { width: "100%", height: 200, borderRadius: 14 },
   primaryButton: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  geocodeButton: { width: 46, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   primaryButtonText: { color: "#fff", fontWeight: "600" },
   navRow: {
     flexDirection: "row",

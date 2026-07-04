@@ -76,72 +76,39 @@ export default function StaffScreen() {
     }
   }
 
-  async function handleSearch() {
+  const RPC_ERRORS: Record<string, string> = {
+    no_salon: "Önce salonunu oluşturmalısın.",
+    bad_phone: "Geçerli bir telefon numarası gir (en az 10 hane).",
+    not_found: "Bu telefon numarasıyla kayıtlı berber bulunamadı.",
+    self: "Kendini çalışan olarak ekleyemezsin.",
+    already: "Bu berber zaten salonunda kayıtlı.",
+    other_salon: "Bu berber başka bir salona kayıtlı.",
+  };
+
+  async function handleAdd() {
     if (!searchEmail.trim()) return;
     setIsSearching(true);
     setSearchResult(null);
     setSearchError("");
-
     try {
-      // users tablosunda bu e-postayı ara (auth.users ile join yok, phone veya full_name arayalım)
-      // Önce auth_id üzerinden e-posta ile eşleşen kullanıcıyı bul
-      // Supabase'de anon key ile auth.users'a erişilemez, bu yüzden
-      // kullanıcıdan e-posta yerine telefon numarasıyla arama yapıyoruz
-      const { data: userRows } = await supabase
-        .from("users")
-        .select("id, full_name, role")
-        .eq("phone", searchEmail.trim())
-        .maybeSingle();
-
-      if (!userRows) {
-        setSearchError("Bu telefon numarasıyla kayıtlı berber bulunamadı.");
+      const { data, error } = await supabase.rpc("assign_barber_by_phone", {
+        p_phone: searchEmail.trim(),
+      });
+      if (error) {
+        setSearchError("İşlem sırasında bir sorun oluştu. Lütfen tekrar dene.");
         return;
       }
-      if (userRows.role !== "barber") {
-        setSearchError("Bu kullanıcı berber rolüne sahip değil.");
+      const result = data as { ok: boolean; error?: string; name?: string };
+      if (!result.ok) {
+        setSearchError(RPC_ERRORS[result.error ?? ""] ?? "İşlem başarısız oldu.");
         return;
       }
-
-      const { data: barberRow } = await supabase
-        .from("barbers")
-        .select("id, salon_id")
-        .eq("user_id", userRows.id)
-        .maybeSingle();
-
-      if (!barberRow) {
-        setSearchError("Bu kullanıcının berber profili henüz oluşturulmamış.");
-        return;
-      }
-      if (barberRow.salon_id && barberRow.salon_id !== salonId) {
-        setSearchError("Bu berber başka bir salona kayıtlı.");
-        return;
-      }
-      if (barberRow.salon_id === salonId) {
-        setSearchError("Bu berber zaten salona kayıtlı.");
-        return;
-      }
-
-      setSearchResult({ barberId: barberRow.id, name: userRows.full_name ?? "İsimsiz" });
+      setSearchEmail("");
+      loadData();
+      Alert.alert("Eklendi", `${result.name ?? "Berber"} salonuna eklendi.`);
     } finally {
       setIsSearching(false);
     }
-  }
-
-  async function handleAdd() {
-    if (!searchResult || !salonId) return;
-    const { error } = await supabase
-      .from("barbers")
-      .update({ salon_id: salonId })
-      .eq("id", searchResult.barberId);
-
-    if (error) {
-      Alert.alert("Hata", "Çalışan eklenirken bir sorun oluştu.");
-      return;
-    }
-    setSearchResult(null);
-    setSearchEmail("");
-    loadData();
-    Alert.alert("Eklendi", `${searchResult.name} salonunuza eklendi.`);
   }
 
   async function handleRemove(member: StaffMember) {
@@ -154,11 +121,10 @@ export default function StaffScreen() {
           text: "Çıkar",
           style: "destructive",
           onPress: async () => {
-            const { error } = await supabase
-              .from("barbers")
-              .update({ salon_id: null })
-              .eq("id", member.id);
-            if (error) {
+            const { data, error } = await supabase.rpc("remove_barber_from_salon", {
+              p_barber_id: member.id,
+            });
+            if (error || data !== true) {
               Alert.alert("Hata", "İşlem sırasında bir sorun oluştu.");
               return;
             }
@@ -206,27 +172,17 @@ export default function StaffScreen() {
             />
             <Pressable
               style={[styles.searchButton, { backgroundColor: colors.primary }]}
-              onPress={handleSearch}
+              onPress={handleAdd}
               disabled={isSearching}
             >
               {isSearching
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Ionicons name="search-outline" size={20} color="#fff" />}
+                : <Ionicons name="person-add-outline" size={20} color="#fff" />}
             </Pressable>
           </View>
 
           {searchError ? (
             <Text style={[styles.errorText, { color: colors.danger }]}>{searchError}</Text>
-          ) : null}
-
-          {searchResult ? (
-            <View style={[styles.resultRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="person-circle-outline" size={28} color={colors.primary} />
-              <Text style={[{ flex: 1, color: colors.text, fontWeight: "600" }]}>{searchResult.name}</Text>
-              <Pressable style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={handleAdd}>
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Ekle</Text>
-              </Pressable>
-            </View>
           ) : null}
         </View>
 

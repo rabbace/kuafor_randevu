@@ -36,6 +36,11 @@
   mobil tarafta değişecek tek şey `app.json` içindeki `supabaseUrl` + `supabaseAnonKey`)
 - [ ] Storage taşıma: `salon-photos` S3 uyumlu — rclone ile kopyalanabilir
 
+## 🏷️ Sakin Saat Analizi (Yarı 2 — yayından ~2 ay sonra)
+- [x] Yarı 1: Manuel sakin saat indirimi (salon tanımlar, slotlar rozetli görünür) — v1'de var
+- [ ] Yarı 2: Randevu geçmişinden gün×saat doluluk analizi; %X altı dolulukta berbere
+  "bu aralığa indirim tanımla" önerisi (dashboard kartı + bildirim). Ön koşul: 4-8 hafta gerçek veri.
+
 ## 📈 Etki / Ölçüm
 - [ ] Basit analitik: kaç randevu, kaç iptal, doluluk oranı (berber dashboard'a haftalık grafik)
 - [ ] Müşteri tarafına "en çok gittiğin salon" özeti

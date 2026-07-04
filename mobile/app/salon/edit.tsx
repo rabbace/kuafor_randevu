@@ -53,6 +53,16 @@ export default function SalonEditScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Sakin saat indirimleri
+  const [discounts, setDiscounts] = useState<
+    { id: string; day_of_week: number; start_time: string; end_time: string; discount_percent: number }[]
+  >([]);
+  const [discountDay, setDiscountDay] = useState(2); // Salı
+  const [discountStart, setDiscountStart] = useState("13:00");
+  const [discountEnd, setDiscountEnd] = useState("16:00");
+  const [discountPercent, setDiscountPercent] = useState("20");
+  const [isAddingDiscount, setIsAddingDiscount] = useState(false);
+
   useEffect(() => {
     async function load() {
       if (!user?.id || !isOwner) {
@@ -80,11 +90,67 @@ export default function SalonEditScreen() {
         setRedeemAmount(String((salon as { loyalty_redeem_amount?: number }).loyalty_redeem_amount ?? 20));
         setRewardType(((salon as { loyalty_reward_type?: string }).loyalty_reward_type as "discount" | "custom") ?? "discount");
         setRewardText((salon as { loyalty_reward_text?: string | null }).loyalty_reward_text ?? "");
+
+        const { data: discountRows } = await supabase
+          .from("salon_discounts")
+          .select("id, day_of_week, start_time, end_time, discount_percent")
+          .eq("salon_id", salon.id)
+          .eq("is_active", true)
+          .order("day_of_week");
+        setDiscounts((discountRows as typeof discounts) ?? []);
       }
       setIsLoading(false);
     }
     load();
   }, [user?.id]);
+
+  const DAY_LABELS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
+  async function handleAddDiscount() {
+    if (!salonId) return;
+    const pct = parseInt(discountPercent, 10);
+    if (Number.isNaN(pct) || pct < 1 || pct > 90) {
+      Alert.alert("Geçersiz Değer", "İndirim yüzdesi 1-90 arasında olmalı.");
+      return;
+    }
+    if (!TIME_REGEX.test(discountStart.trim()) || !TIME_REGEX.test(discountEnd.trim())) {
+      Alert.alert("Geçersiz Saat", "Saatleri '13:00' biçiminde gir.");
+      return;
+    }
+    if (discountStart.trim() >= discountEnd.trim()) {
+      Alert.alert("Geçersiz Aralık", "Bitiş saati başlangıçtan sonra olmalı.");
+      return;
+    }
+
+    setIsAddingDiscount(true);
+    const { data, error } = await supabase
+      .from("salon_discounts")
+      .insert({
+        salon_id: salonId,
+        day_of_week: discountDay,
+        start_time: discountStart.trim(),
+        end_time: discountEnd.trim(),
+        discount_percent: pct,
+      })
+      .select("id, day_of_week, start_time, end_time, discount_percent")
+      .single();
+    setIsAddingDiscount(false);
+
+    if (error || !data) {
+      Alert.alert("Eklenemedi", "İndirim kaydedilirken bir hata oluştu. Migration 0017 çalıştırıldı mı?");
+      return;
+    }
+    setDiscounts((prev) => [...prev, data as (typeof discounts)[number]]);
+  }
+
+  async function handleRemoveDiscount(id: string) {
+    const { error } = await supabase.from("salon_discounts").delete().eq("id", id);
+    if (error) {
+      Alert.alert("Silinemedi", "İndirim silinirken bir hata oluştu.");
+      return;
+    }
+    setDiscounts((prev) => prev.filter((d) => d.id !== id));
+  }
 
   async function handlePickPhoto() {
     if (!salonId) return;
@@ -452,6 +518,86 @@ export default function SalonEditScreen() {
               )}
             </View>
 
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
+              <Text style={[styles.label, { color: colors.text }]}>🏷️ Sakin Saat İndirimleri</Text>
+              <Text style={[styles.hint, { color: colors.textMuted }]}>
+                Az tercih edilen gün ve saatlere indirim tanımla; müşteriler o saatleri indirimli
+                rozetle görür ve boş saatlerin dolar.
+              </Text>
+
+              {discounts.map((d) => (
+                <View key={d.id} style={[styles.discountRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>
+                      {DAY_LABELS[d.day_of_week]} · {String(d.start_time).slice(0, 5)}–{String(d.end_time).slice(0, 5)}
+                    </Text>
+                    <Text style={{ color: "#16A34A", fontSize: 12, fontWeight: "700" }}>%{d.discount_percent} indirim</Text>
+                  </View>
+                  <Pressable hitSlop={8} onPress={() => handleRemoveDiscount(d.id)}>
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ))}
+
+              <Text style={[styles.hint, { color: colors.textMuted, marginTop: 4 }]}>Gün seç:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {DAY_LABELS.map((label, i) => (
+                  <Pressable
+                    key={label}
+                    style={[
+                      styles.dayChip,
+                      {
+                        backgroundColor: discountDay === i ? colors.primary : colors.background,
+                        borderColor: discountDay === i ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setDiscountDay(i)}
+                  >
+                    <Text style={{ color: discountDay === i ? "#fff" : colors.text, fontSize: 12, fontWeight: "600" }}>
+                      {label.slice(0, 3)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
+                  value={discountStart}
+                  onChangeText={setDiscountStart}
+                  placeholder="13:00"
+                  placeholderTextColor={colors.textMuted}
+                  maxLength={5}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
+                  value={discountEnd}
+                  onChangeText={setDiscountEnd}
+                  placeholder="16:00"
+                  placeholderTextColor={colors.textMuted}
+                  maxLength={5}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, width: 70 }]}
+                  value={discountPercent}
+                  onChangeText={setDiscountPercent}
+                  placeholder="%20"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+              </View>
+
+              <Pressable
+                style={[styles.saveButton, { backgroundColor: "#16A34A", opacity: isAddingDiscount ? 0.7 : 1 }]}
+                onPress={handleAddDiscount}
+                disabled={isAddingDiscount}
+              >
+                <Ionicons name="add-outline" size={18} color="#fff" />
+                <Text style={styles.saveText}>{isAddingDiscount ? "Ekleniyor..." : "İndirim Ekle"}</Text>
+              </Pressable>
+            </View>
+
             <Pressable
               style={[styles.saveButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
               onPress={handleSave}
@@ -480,6 +626,15 @@ const styles = StyleSheet.create({
   hint: { fontSize: 12 },
   loyaltyRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   rewardTypeRow: { flexDirection: "row", gap: 8 },
+  discountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  dayChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   rewardTypeChip: {
     flex: 1,
     borderWidth: 1,

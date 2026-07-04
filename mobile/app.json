@@ -26,6 +26,7 @@
         "backgroundColor": "#6D28D9"
       },
       "package": "com.kuaforrandevu.app",
+      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC63KvvVUeQjn0yjGwEvX60B5obbhCWrck"

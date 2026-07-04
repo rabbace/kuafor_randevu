@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
@@ -46,7 +47,14 @@ async function registerInternal(userId: string): Promise<string | null> {
     });
   }
 
-  const { data } = await Notifications.getExpoPushTokenAsync();
+  // projectId app.json → extra.eas.projectId'den okunur; placeholder ise push atlanır.
+  const projectId: string | undefined = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId || projectId.startsWith("your-")) {
+    console.warn("EAS projectId yapılandırılmamış; push token alınamıyor.");
+    return null;
+  }
+
+  const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
   const token = data;
 
   await supabase.from("push_tokens").upsert(

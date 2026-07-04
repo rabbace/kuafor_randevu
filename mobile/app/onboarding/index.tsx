@@ -56,8 +56,8 @@ const SLIDES: OnboardingSlideData[] = [
   },
   {
     key: "6",
-    title: "Berberler İçin Güçlü Dashboard",
-    description: "Günlük takvim, doluluk görünümü, kampanya bildirimleri ve müşteri yönetimi hep bir arada.",
+    title: "Salonlar İçin Güçlü Dashboard",
+    description: "Berber, kuaför ve güzellik salonları: takvim, kampanya bildirimleri ve müşteri yönetimi bir arada.",
     icon: "grid-outline",
     gradient: ["#6D28D9", "#7C3AED"],
   },

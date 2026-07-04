@@ -151,7 +151,7 @@ export default function RegisterScreen() {
                 onPress={() => setRole("customer")}
               />
               <RoleOption
-                label="Berber"
+                label="Berber / Kuaför"
                 icon="cut-outline"
                 active={role === "barber"}
                 colors={colors}

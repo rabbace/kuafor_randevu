@@ -16,7 +16,7 @@ const DEFAULT_REGION = { latitude: 41.0082, longitude: 28.9784 }; // İstanbul
 
 const ROLE_LABELS: Record<string, string> = {
   customer: "Müşteri",
-  barber: "Berber",
+  barber: "Berber / Kuaför",
   salon_owner: "Salon Sahibi",
 };
 
@@ -84,6 +84,7 @@ export default function ProfileScreen() {
   const [salonName, setSalonName] = useState("");
   const [salonPhone, setSalonPhone] = useState("");
   const [salonDescription, setSalonDescription] = useState("");
+  const [salonSegment, setSalonSegment] = useState<"male" | "female" | "unisex">("unisex");
   const [isCreatingSalon, setIsCreatingSalon] = useState(false);
 
   // Hizmet yönetimi
@@ -144,6 +145,7 @@ export default function ProfileScreen() {
         owner_id: user.id,
         phone: salonPhone.trim() || null,
         description: salonDescription.trim() || null,
+        target_gender: salonSegment,
       })
       .select()
       .single();
@@ -378,6 +380,33 @@ export default function ProfileScreen() {
             value={salonDescription}
             onChangeText={setSalonDescription}
           />
+
+          <Text style={[styles.sectionHint, { color: colors.textMuted, marginTop: 2 }]}>Hedef kitle</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {(
+              [
+                { key: "male", label: "Erkek" },
+                { key: "female", label: "Kadın" },
+                { key: "unisex", label: "Unisex" },
+              ] as const
+            ).map((s) => (
+              <Pressable
+                key={s.key}
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: salonSegment === s.key ? colors.primary : colors.surface,
+                    borderColor: salonSegment === s.key ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setSalonSegment(s.key)}
+              >
+                <Text style={{ color: salonSegment === s.key ? "#fff" : colors.text, fontWeight: "600", fontSize: 13 }}>
+                  {s.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
           <Pressable
             style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: isCreatingSalon ? 0.7 : 1 }]}

@@ -13,7 +13,15 @@ import type { Appointment, Barber, Salon, Service } from "@/types/database";
 
 type BarberWithMeta = Barber & {
   user: { full_name: string | null } | null;
-  salon: { name: string; photo_url?: string | null } | null;
+  salon: { name: string; photo_url?: string | null; target_gender?: string | null } | null;
+};
+
+type SegmentFilter = "all" | "male" | "female" | "unisex";
+
+const SEGMENT_META: Record<string, { label: string; color: string }> = {
+  male: { label: "Erkek", color: "#0369A1" },
+  female: { label: "Kadın", color: "#BE123C" },
+  unisex: { label: "Unisex", color: "#047857" },
 };
 
 type RatingInfo = { avg: number; total: number };
@@ -75,11 +83,15 @@ function DiscoverScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [myLocation, setMyLocation] = useState<{ lat: number; lon: number } | null>(null);
+  // Kullanıcının cinsiyeti biliniyorsa ona uygun segmenti öntanımlı seç.
+  const [segment, setSegment] = useState<SegmentFilter>(() =>
+    user?.gender === "female" ? "female" : user?.gender === "male" ? "male" : "all"
+  );
 
   useEffect(() => {
     supabase
       .from("barbers")
-      .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name, photo_url)")
+      .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name, photo_url, target_gender)")
       .eq("is_active", true)
       .then(({ data }) => {
         setBarbers((data ?? []) as unknown as BarberWithMeta[]);
@@ -326,18 +338,25 @@ function DiscoverScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("tr-TR");
-    const list = !q
+    let list = !q
       ? [...barbers]
       : barbers.filter((b) => {
           const haystack = `${b.user?.full_name ?? ""} ${b.salon?.name ?? ""} ${b.address ?? ""}`.toLocaleLowerCase("tr-TR");
           return haystack.includes(q);
         });
+    // Segment filtresi: unisex salonlar erkek/kadın filtresinde de görünür.
+    if (segment !== "all") {
+      list = list.filter((b) => {
+        const t = b.salon?.target_gender ?? "unisex";
+        return segment === "unisex" ? t === "unisex" : t === segment || t === "unisex";
+      });
+    }
     // Yakın berberler önce; konumu olmayanlar listenin sonunda.
     if (distances.size > 0) {
       list.sort((a, b) => (distances.get(a.id) ?? Infinity) - (distances.get(b.id) ?? Infinity));
     }
     return list;
-  }, [barbers, query, distances]);
+  }, [barbers, query, distances, segment]);
 
   if (isLoading) {
     return (
@@ -362,7 +381,7 @@ function DiscoverScreen() {
               <Ionicons name="search-outline" size={18} color={colors.textMuted} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Berber, salon veya adres ara"
+                placeholder="Salon, kuaför veya adres ara"
                 placeholderTextColor={colors.textMuted}
                 value={query}
                 onChangeText={setQuery}
@@ -373,6 +392,39 @@ function DiscoverScreen() {
                   <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                 </Pressable>
               )}
+            </View>
+
+            <View style={styles.segmentRow}>
+              {(
+                [
+                  { key: "all", label: "Tümü" },
+                  { key: "male", label: "Erkek" },
+                  { key: "female", label: "Kadın" },
+                  { key: "unisex", label: "Unisex" },
+                ] as const
+              ).map((s) => (
+                <Pressable
+                  key={s.key}
+                  style={[
+                    styles.segmentChip,
+                    {
+                      backgroundColor: segment === s.key ? colors.primary : colors.surface,
+                      borderColor: segment === s.key ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setSegment(s.key)}
+                >
+                  <Text
+                    style={{
+                      color: segment === s.key ? "#fff" : colors.text,
+                      fontWeight: "600",
+                      fontSize: 13,
+                    }}
+                  >
+                    {s.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
         }
@@ -406,10 +458,30 @@ function DiscoverScreen() {
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.name, { color: colors.text }]}>{item.user?.full_name ?? "Berber"}</Text>
-                  {item.salon?.name && (
-                    <Text style={[styles.salon, { color: colors.textMuted }]}>{item.salon.name}</Text>
-                  )}
+                  <Text style={[styles.name, { color: colors.text }]}>{item.user?.full_name ?? "Uzman"}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {item.salon?.name && (
+                      <Text style={[styles.salon, { color: colors.textMuted }]}>{item.salon.name}</Text>
+                    )}
+                    {item.salon?.target_gender && SEGMENT_META[item.salon.target_gender] && (
+                      <View
+                        style={[
+                          styles.segmentBadge,
+                          { backgroundColor: SEGMENT_META[item.salon.target_gender].color + "1A" },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: SEGMENT_META[item.salon.target_gender].color,
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {SEGMENT_META[item.salon.target_gender].label}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 {rating && rating.total > 0 ? (
                   <View style={styles.ratingRow}>
@@ -527,6 +599,15 @@ const styles = StyleSheet.create({
   address: { fontSize: 13, flex: 1 },
   distanceBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   distanceText: { fontSize: 12, fontWeight: "700" },
+  segmentRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+  segmentChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  segmentBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   availabilityText: { fontSize: 13, fontWeight: "600", flex: 1 },
   map: { width: "100%", height: 140, borderRadius: 14, marginTop: 2 },
   bookButton: {

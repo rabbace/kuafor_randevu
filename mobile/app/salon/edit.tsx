@@ -44,6 +44,7 @@ export default function SalonEditScreen() {
   const [endTime, setEndTime] = useState("20:00");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
+  const [redeemAmount, setRedeemAmount] = useState("20");
   const [isTogglingLoyalty, setIsTogglingLoyalty] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +73,7 @@ export default function SalonEditScreen() {
         setEndTime(String(salon.end_time ?? "20:00").slice(0, 5));
         setPhotoUrl((salon as { photo_url?: string | null }).photo_url ?? null);
         setLoyaltyEnabled((salon as { loyalty_enabled?: boolean }).loyalty_enabled ?? true);
+        setRedeemAmount(String((salon as { loyalty_redeem_amount?: number }).loyalty_redeem_amount ?? 20));
       }
       setIsLoading(false);
     }
@@ -107,11 +109,14 @@ export default function SalonEditScreen() {
 
       if (uploadError) {
         const bucketMissing = /bucket|not found/i.test(uploadError.message ?? "");
+        const noPermission = /security|policy|unauthorized|row-level/i.test(uploadError.message ?? "");
         Alert.alert(
           "Yüklenemedi",
           bucketMissing
-            ? "Depolama alanı henüz yapılandırılmamış"
-            : "Fotoğraf yüklenirken bir hata oluştu. Lütfen tekrar dene."
+            ? "Depolama alanı henüz yapılandırılmamış (salon-photos bucket'ı eksik)."
+            : noPermission
+              ? "Depolama izni eksik: salon-photos bucket'ına yükleme policy'si tanımlanmalı."
+              : `Fotoğraf yüklenirken bir hata oluştu.\n\n${uploadError.message}`
         );
         return;
       }
@@ -158,6 +163,11 @@ export default function SalonEditScreen() {
       Alert.alert("Geçersiz Saat", "Kapanış saati açılış saatinden sonra olmalı.");
       return;
     }
+    const redeem = parseInt(redeemAmount, 10);
+    if (Number.isNaN(redeem) || redeem < 1 || redeem > 10000) {
+      Alert.alert("Geçersiz Değer", "100 puanın TL değeri 1-10000 arasında olmalı.");
+      return;
+    }
 
     setIsSaving(true);
     const { error } = await supabase
@@ -170,6 +180,7 @@ export default function SalonEditScreen() {
         buffer_time_minutes: buffer,
         start_time: startTime.trim(),
         end_time: endTime.trim(),
+        loyalty_redeem_amount: redeem,
       })
       .eq("owner_id", user.id);
     setIsSaving(false);
@@ -337,6 +348,24 @@ export default function SalonEditScreen() {
                   }}
                 />
               </View>
+
+              {loyaltyEnabled && (
+                <>
+                  <Text style={[styles.label, { color: colors.text }]}>100 Puanın Değeri (TL)</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                    value={redeemAmount}
+                    onChangeText={setRedeemAmount}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                    placeholder="20"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>
+                    Müşteri her 100 puanında bu tutar kadar indirim kullanır. Kaydet butonuyla kaydedilir.
+                  </Text>
+                </>
+              )}
             </View>
 
             <Pressable

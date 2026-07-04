@@ -179,7 +179,7 @@ export default function AppointmentsScreen() {
       )}
 
       {isBarber && todaySummary && (
-        <LinearGradient colors={["#6D28D9", "#7C3AED"]} style={[styles.summaryCard, cardShadow]}>
+        <LinearGradient colors={colors.gradient} style={[styles.summaryCard, cardShadow]}>
           <Text style={styles.summaryTitle}>Bugünkü Özet</Text>
           <View style={styles.summaryRow}>
             <View style={styles.summaryBox}>

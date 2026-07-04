@@ -7,7 +7,7 @@ import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { isExpoGo } from "@/lib/ads";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useThemeStore } from "@/store/useThemeStore";
+import { hydrateTheme, useThemeStore } from "@/store/useThemeStore";
 
 // Native splash'ı biz kontrol edelim; bootstrap bitince gizlenir.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -59,6 +59,7 @@ export default function RootLayout() {
     async function bootstrap() {
       let route = "/onboarding";
       try {
+        await hydrateTheme();
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
         if (data.session) {

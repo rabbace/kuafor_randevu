@@ -467,7 +467,7 @@ export default function BookingScreen() {
           disabled={selectedServices.length === 0 || !selectedSlot || isBooking}
           onPress={handleBook}
         >
-          <LinearGradient colors={["#6D28D9", "#9333EA"]} style={styles.bookButton}>
+          <LinearGradient colors={colors.gradient} style={styles.bookButton}>
             {isBooking ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (

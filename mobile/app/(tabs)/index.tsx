@@ -92,7 +92,8 @@ function DiscoverScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const Location = await import("expo-location");
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const Location = require("expo-location");
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted" || cancelled) return;
         const pos = await Location.getCurrentPositionAsync({

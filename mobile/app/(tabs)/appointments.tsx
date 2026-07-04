@@ -32,6 +32,7 @@ export default function AppointmentsScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [ratedIds, setRatedIds] = useState<Set<string>>(new Set());
 
   const sections = useMemo(() => {
     const todayStart = new Date();
@@ -123,6 +124,16 @@ export default function AppointmentsScreen() {
         .eq("customer_id", user.id)
         .order("start_time", { ascending: true });
       setAppointments(data ?? []);
+
+      // Zaten değerlendirilen randevularda "Değerlendir" butonu gizlenir.
+      const completedIds = (data ?? []).filter((a) => a.status === "completed").map((a) => a.id);
+      if (completedIds.length > 0) {
+        const { data: rated } = await supabase
+          .from("barber_ratings")
+          .select("appointment_id")
+          .in("appointment_id", completedIds);
+        setRatedIds(new Set(((rated as { appointment_id: string }[]) ?? []).map((r) => r.appointment_id)));
+      }
     } catch {
       // Yükleme hatası sessizce yutulur; ekran boş liste gösterir.
     } finally {
@@ -287,7 +298,7 @@ export default function AppointmentsScreen() {
                 </View>
               )}
 
-              {!isBarber && item.status === "completed" && (
+              {!isBarber && item.status === "completed" && !ratedIds.has(item.id) && (
                 <View style={styles.actionRow}>
                   <Pressable
                     style={[styles.actionButton, { backgroundColor: "#6D28D9" }]}
@@ -296,6 +307,12 @@ export default function AppointmentsScreen() {
                     <Ionicons name="star-outline" size={15} color="#fff" />
                     <Text style={styles.actionText}>Değerlendir</Text>
                   </Pressable>
+                </View>
+              )}
+              {!isBarber && item.status === "completed" && ratedIds.has(item.id) && (
+                <View style={styles.ratedRow}>
+                  <Ionicons name="checkmark-circle" size={15} color="#15803D" />
+                  <Text style={{ color: "#15803D", fontSize: 13, fontWeight: "600" }}>Değerlendirildi</Text>
                 </View>
               )}
             </View>
@@ -602,6 +619,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: "700" },
   manualRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   actionRow: { flexDirection: "row", gap: 8 },
+  ratedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 2 },
   actionButton: {
     flex: 1,
     flexDirection: "row",

@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ONBOARDING_KEY = "onboarding_completed";
+// v2: anahtar versiyonlandı — eski kurulumlardan/yedeklerden kalan
+// "onboarding_completed" kaydı yeni tanıtım akışını gizlemesin.
+const ONBOARDING_KEY = "onboarding_completed_v2";
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
   const value = await AsyncStorage.getItem(ONBOARDING_KEY);

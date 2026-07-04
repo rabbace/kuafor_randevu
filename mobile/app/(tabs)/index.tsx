@@ -64,7 +64,7 @@ function DiscoverScreen() {
     supabase
       .from("barbers")
       .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name, photo_url)")
-      .not("latitude", "is", null)
+      .eq("is_active", true)
       .then(({ data }) => {
         setBarbers((data ?? []) as unknown as BarberWithMeta[]);
         setIsLoading(false);

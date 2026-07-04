@@ -28,6 +28,29 @@ interface BarberSchedule {
   is_off: boolean;
 }
 
+interface SalonDiscount {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  discount_percent: number;
+}
+
+/** Slot başlangıcı bir indirim penceresine düşüyorsa yüzdesini döner. */
+function discountForSlot(discounts: SalonDiscount[], slotStart: Date): number {
+  const day = slotStart.getDay();
+  const minutes = slotStart.getHours() * 60 + slotStart.getMinutes();
+  let best = 0;
+  for (const d of discounts) {
+    if (d.day_of_week !== day) continue;
+    const [sh, sm] = d.start_time.split(":").map(Number);
+    const [eh, em] = d.end_time.split(":").map(Number);
+    if (minutes >= sh * 60 + sm && minutes < eh * 60 + em) {
+      best = Math.max(best, d.discount_percent);
+    }
+  }
+  return best;
+}
+
 type BarberWithMeta = Barber & { user: { full_name: string | null } | null };
 
 const DAY_NAMES = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -48,6 +71,7 @@ export default function BookingScreen() {
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
+  const [discounts, setDiscounts] = useState<SalonDiscount[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
@@ -83,24 +107,29 @@ export default function BookingScreen() {
   const rewardType = salonLoyalty?.loyalty_reward_type ?? "discount";
   const rewardText = salonLoyalty?.loyalty_reward_text ?? null;
   const redeemValue = salonLoyalty?.loyalty_redeem_amount ?? 20;
+  // Sakin saat indirimi: seçili slota denk gelen pencere varsa uygulanır.
+  const slotDiscountPercent = selectedSlot ? discountForSlot(discounts, selectedSlot.start) : 0;
+  const slotDiscountAmount = Math.round((totalPrice * slotDiscountPercent) / 100);
+  const priceAfterSlotDiscount = Math.max(0, totalPrice - slotDiscountAmount);
+
   const { maxDiscount, pointsToRedeem } = useMemo(() => {
-    if (totalPrice === 0) return { maxDiscount: 0, pointsToRedeem: 0 };
+    if (priceAfterSlotDiscount === 0) return { maxDiscount: 0, pointsToRedeem: 0 };
     if (rewardType === "custom") {
       // Özel ödül: 100 puan = 1 ödül; fiyat değişmez, ödül notta belirtilir.
       return { maxDiscount: 0, pointsToRedeem: loyaltyPoints >= 100 ? 100 : 0 };
     }
     const availableUnits = Math.floor(loyaltyPoints / 100);
-    const neededUnits = Math.ceil(totalPrice / redeemValue);
+    const neededUnits = Math.ceil(priceAfterSlotDiscount / redeemValue);
     const units = Math.min(availableUnits, neededUnits);
     return {
-      maxDiscount: Math.min(units * redeemValue, totalPrice),
+      maxDiscount: Math.min(units * redeemValue, priceAfterSlotDiscount),
       pointsToRedeem: units * 100,
     };
-  }, [loyaltyPoints, totalPrice, redeemValue, rewardType]);
+  }, [loyaltyPoints, priceAfterSlotDiscount, redeemValue, rewardType]);
   const canRedeem =
     loyaltyPoints >= 100 && (rewardType === "custom" ? !!rewardText : maxDiscount > 0);
   const discount = usePoints && rewardType === "discount" ? maxDiscount : 0;
-  const finalPrice = Math.max(0, totalPrice - discount);
+  const finalPrice = Math.max(0, priceAfterSlotDiscount - discount);
 
   const days = useMemo(() => {
     const today = startOfDay(new Date());
@@ -128,7 +157,7 @@ export default function BookingScreen() {
         }
         setBarber(barberRow as unknown as BarberWithMeta);
 
-        const [salonRes, servicesRes, schedulesRes] = await Promise.all([
+        const [salonRes, servicesRes, schedulesRes, discountsRes] = await Promise.all([
           supabase.from("salons").select("*").eq("id", barberRow.salon_id).maybeSingle(),
           supabase
             .from("services")
@@ -137,11 +166,17 @@ export default function BookingScreen() {
             .eq("is_active", true)
             .order("name"),
           supabase.from("barber_schedules").select("*").eq("barber_id", barberRow.id),
+          supabase
+            .from("salon_discounts")
+            .select("day_of_week, start_time, end_time, discount_percent")
+            .eq("salon_id", barberRow.salon_id)
+            .eq("is_active", true),
         ]);
 
         setSalon((salonRes.data as Salon) ?? null);
         setServices((servicesRes.data as Service[]) ?? []);
         setSchedules((schedulesRes.data as BarberSchedule[]) ?? []);
+        setDiscounts((discountsRes.data as SalonDiscount[]) ?? []);
       } catch {
         Alert.alert("Hata", "Bilgiler yüklenirken bir sorun oluştu.");
       } finally {
@@ -407,6 +442,7 @@ export default function BookingScreen() {
             slots={slots}
             selectedStart={selectedSlot?.start ?? null}
             onSelect={(slot) => setSelectedSlot(slot)}
+            discountFor={(slot) => discountForSlot(discounts, slot.start)}
           />
         )}
 
@@ -445,9 +481,16 @@ export default function BookingScreen() {
 
         {selectedServices.length > 0 && selectedSlot && (
           <View style={[styles.priceSummary, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Ödenecek Tutar</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Ödenecek Tutar</Text>
+              {slotDiscountPercent > 0 && (
+                <Text style={{ color: "#16A34A", fontSize: 12, fontWeight: "700", marginTop: 2 }}>
+                  🏷️ Sakin saat indirimi: %{slotDiscountPercent} (−{slotDiscountAmount} ₺)
+                </Text>
+              )}
+            </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {discount > 0 && (
+              {(discount > 0 || slotDiscountAmount > 0) && (
                 <Text style={[styles.priceStruck, { color: colors.textMuted }]}>
                   {totalPrice} ₺
                 </Text>

@@ -49,7 +49,7 @@ const SLIDES: OnboardingSlideData[] = [
   {
     key: "5",
     title: "Sadakat Puanı Kazan",
-    description: "Her ziyaretinde puan topla. 100 puana ulaşınca 20 TL indirim olarak kullan.",
+    description: "Her ziyaretinde puan topla; biriken puanlarını salonun sunduğu ödüllere dönüştür.",
     icon: "gift-outline",
     gradient: ["#059669", "#10B981"],
     badge: "100 puan",

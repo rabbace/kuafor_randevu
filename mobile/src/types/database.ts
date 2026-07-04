@@ -31,6 +31,8 @@ export interface Salon {
   is_active?: boolean;
   loyalty_enabled?: boolean;
   loyalty_redeem_amount?: number;
+  loyalty_reward_type?: "discount" | "custom";
+  loyalty_reward_text?: string | null;
   created_at?: string;
   updated_at?: string;
 }

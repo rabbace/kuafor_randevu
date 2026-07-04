@@ -45,6 +45,8 @@ export default function SalonEditScreen() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
   const [redeemAmount, setRedeemAmount] = useState("20");
+  const [rewardType, setRewardType] = useState<"discount" | "custom">("discount");
+  const [rewardText, setRewardText] = useState("");
   const [isTogglingLoyalty, setIsTogglingLoyalty] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +76,8 @@ export default function SalonEditScreen() {
         setPhotoUrl((salon as { photo_url?: string | null }).photo_url ?? null);
         setLoyaltyEnabled((salon as { loyalty_enabled?: boolean }).loyalty_enabled ?? true);
         setRedeemAmount(String((salon as { loyalty_redeem_amount?: number }).loyalty_redeem_amount ?? 20));
+        setRewardType(((salon as { loyalty_reward_type?: string }).loyalty_reward_type as "discount" | "custom") ?? "discount");
+        setRewardText((salon as { loyalty_reward_text?: string | null }).loyalty_reward_text ?? "");
       }
       setIsLoading(false);
     }
@@ -164,8 +168,12 @@ export default function SalonEditScreen() {
       return;
     }
     const redeem = parseInt(redeemAmount, 10);
-    if (Number.isNaN(redeem) || redeem < 1 || redeem > 10000) {
+    if (rewardType === "discount" && (Number.isNaN(redeem) || redeem < 1 || redeem > 10000)) {
       Alert.alert("Geçersiz Değer", "100 puanın TL değeri 1-10000 arasında olmalı.");
+      return;
+    }
+    if (rewardType === "custom" && !rewardText.trim()) {
+      Alert.alert("Eksik Bilgi", "Özel ödülün ne olduğunu yaz (örn. 1 sakal tıraşı bedava).");
       return;
     }
 
@@ -180,7 +188,9 @@ export default function SalonEditScreen() {
         buffer_time_minutes: buffer,
         start_time: startTime.trim(),
         end_time: endTime.trim(),
-        loyalty_redeem_amount: redeem,
+        loyalty_redeem_amount: rewardType === "discount" ? redeem : undefined,
+        loyalty_reward_type: rewardType,
+        loyalty_reward_text: rewardType === "custom" ? rewardText.trim() : null,
       })
       .eq("owner_id", user.id);
     setIsSaving(false);
@@ -351,19 +361,63 @@ export default function SalonEditScreen() {
 
               {loyaltyEnabled && (
                 <>
-                  <Text style={[styles.label, { color: colors.text }]}>100 Puanın Değeri (TL)</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                    value={redeemAmount}
-                    onChangeText={setRedeemAmount}
-                    keyboardType="number-pad"
-                    maxLength={5}
-                    placeholder="20"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                  <Text style={[styles.hint, { color: colors.textMuted }]}>
-                    Müşteri her 100 puanında bu tutar kadar indirim kullanır. Kaydet butonuyla kaydedilir.
-                  </Text>
+                  <Text style={[styles.label, { color: colors.text }]}>100 Puanın Ödülü</Text>
+                  <View style={styles.rewardTypeRow}>
+                    {(
+                      [
+                        { key: "discount", label: "TL İndirim" },
+                        { key: "custom", label: "Özel Ödül" },
+                      ] as const
+                    ).map((t) => (
+                      <Pressable
+                        key={t.key}
+                        style={[
+                          styles.rewardTypeChip,
+                          {
+                            backgroundColor: rewardType === t.key ? colors.primary : colors.background,
+                            borderColor: rewardType === t.key ? colors.primary : colors.border,
+                          },
+                        ]}
+                        onPress={() => setRewardType(t.key)}
+                      >
+                        <Text style={{ color: rewardType === t.key ? "#fff" : colors.text, fontWeight: "600", fontSize: 13 }}>
+                          {t.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  {rewardType === "discount" ? (
+                    <>
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                        value={redeemAmount}
+                        onChangeText={setRedeemAmount}
+                        keyboardType="number-pad"
+                        maxLength={5}
+                        placeholder="20"
+                        placeholderTextColor={colors.textMuted}
+                      />
+                      <Text style={[styles.hint, { color: colors.textMuted }]}>
+                        Müşteri her 100 puanında bu tutar kadar indirim kullanır.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                        value={rewardText}
+                        onChangeText={setRewardText}
+                        placeholder="Örn. 1 sakal tıraşı bedava"
+                        placeholderTextColor={colors.textMuted}
+                        maxLength={80}
+                      />
+                      <Text style={[styles.hint, { color: colors.textMuted }]}>
+                        Serbest yaz: "1 kaş/bıyık alma bedava", "1 yıkama + fön bedava"... Müşteri 100 puanla bu ödülü kullanır.
+                      </Text>
+                    </>
+                  )}
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>Kaydet butonuyla kaydedilir.</Text>
                 </>
               )}
             </View>
@@ -395,6 +449,14 @@ const styles = StyleSheet.create({
   timeInput: { flex: 1, textAlign: "center" },
   hint: { fontSize: 12 },
   loyaltyRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  rewardTypeRow: { flexDirection: "row", gap: 8 },
+  rewardTypeChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
   salonPhoto: { width: "100%", height: 160, borderRadius: 12 },
   photoPlaceholder: {
     borderWidth: 1,

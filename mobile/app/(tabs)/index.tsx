@@ -438,6 +438,18 @@ function DiscoverScreen() {
               </Text>
               <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </Pressable>
+
+            <Pressable
+              style={[styles.guideBanner, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 8 }]}
+              onPress={() => router.push("/blog" as never)}
+            >
+              <Ionicons name="book-outline" size={18} color={colors.primary} />
+              <Text style={[styles.guideBannerText, { color: colors.text }]}>
+                <Text style={{ fontWeight: "800", color: colors.primary }}>İpuçları & Trendler</Text> — bakım
+                rehberleri ve sezon kesimleri
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </Pressable>
           </View>
         }
         renderItem={({ item }) => {

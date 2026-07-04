@@ -591,6 +591,7 @@ export default function ProfileScreen() {
         {[
           { icon: "create-outline", label: "Profili Düzenle", route: "/profile/edit" },
           { icon: "sparkles-outline", label: "Stil Rehberi", route: "/style-guide" },
+          { icon: "book-outline", label: "İpuçları & Trendler", route: "/blog" },
           { icon: "gift-outline", label: "Sadakat Puanlarım", route: "/loyalty" },
           { icon: "people-outline", label: "Bekleme Listem", route: "/waitlist" },
         ].map((item) => (

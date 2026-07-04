@@ -1,0 +1,121 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import clsx from "clsx";
+import { updateAppointmentStatus } from "@/app/actions/appointments";
+import { Button } from "@/components/ui/Button";
+import { Card, Badge } from "@/components/ui/Card";
+import type { AppointmentWithRelations } from "@/lib/types/database";
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending: { label: "Onay Bekliyor", color: "bg-amber-50 text-amber-700" },
+  confirmed: { label: "Onaylandı", color: "bg-green-50 text-green-700" },
+  rejected: { label: "Reddedildi", color: "bg-red-50 text-red-700" },
+  cancelled: { label: "İptal Edildi", color: "bg-neutral-100 text-neutral-600" },
+  completed: { label: "Tamamlandı", color: "bg-blue-50 text-blue-700" },
+  no_show: { label: "Gelmedi", color: "bg-red-50 text-red-700" },
+};
+
+function initialsOf(name: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+export function AppointmentApprovalCard({
+  appointment,
+}: {
+  appointment: AppointmentWithRelations;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const status = STATUS_LABELS[appointment.status];
+  const start = new Date(appointment.start_time);
+  const end = new Date(appointment.end_time);
+  const displayName = appointment.is_manual_entry
+    ? appointment.manual_customer_name
+    : appointment.customer?.full_name;
+
+  function handleDecision(decision: "confirmed" | "rejected") {
+    setErrorMessage(null);
+    startTransition(async () => {
+      const result = await updateAppointmentStatus(appointment.id, decision);
+      if (!result.success) setErrorMessage(result.message);
+    });
+  }
+
+  return (
+    <Card className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700">
+            {initialsOf(displayName ?? null)}
+          </div>
+          <div>
+            <p className="font-medium text-neutral-900">{displayName ?? "Müşteri"}</p>
+            <p className="text-sm text-neutral-500">{appointment.service.name}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge className={status.color}>{status.label}</Badge>
+          {appointment.is_manual_entry && (
+            <Badge className="bg-neutral-100 text-neutral-600">Elden Girildi</Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-neutral-600">
+        <div className="flex items-center justify-between">
+          <span>Tarih / Saat</span>
+          <span className="font-medium text-neutral-900">
+            {start.toLocaleDateString("tr-TR")} ·{" "}
+            {start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}–
+            {end.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>Çalışan</span>
+          <span className="font-medium text-neutral-900">
+            {appointment.barber.user.full_name ?? appointment.barber.title}
+          </span>
+        </div>
+        {(appointment.manual_customer_phone || appointment.customer?.phone) && (
+          <div className="flex items-center justify-between">
+            <span>Telefon</span>
+            <a
+              href={`https://wa.me/${(appointment.manual_customer_phone ?? appointment.customer?.phone ?? "").replace(/[^\d+]/g, "").replace(/^\+/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-green-700 hover:underline"
+            >
+              {appointment.manual_customer_phone ?? appointment.customer?.phone}
+            </a>
+          </div>
+        )}
+      </div>
+
+      {appointment.status === "pending" && (
+        <div className="flex gap-2">
+          <Button className="flex-1" disabled={isPending} onClick={() => handleDecision("confirmed")}>
+            Onayla
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            disabled={isPending}
+            onClick={() => handleDecision("rejected")}
+          >
+            Reddet
+          </Button>
+        </div>
+      )}
+
+      {errorMessage && <p className="text-xs text-red-600">{errorMessage}</p>}
+    </Card>
+  );
+}

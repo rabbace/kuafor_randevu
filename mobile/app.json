@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "Kuaför Randevu",
+    "slug": "kuafor-randevu",
+    "scheme": "kuaforrandevu",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#12121e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kuaforrandevu.app",
+      "config": {
+        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6D28D9"
+      },
+      "package": "com.kuaforrandevu.app",
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC63KvvVUeQjn0yjGwEvX60B5obbhCWrck"
+        }
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6D28D9"
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "extraProguardRules": "-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener\n-dontwarn android.media.LoudnessCodecController\n-keep class expo.modules.** { *; }\n-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.swmansion.** { *; }\n-keepclassmembers class * { @expo.modules.core.interfaces.ExpoProp *; }\n-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactProp *; }\n-keep class * extends com.facebook.react.bridge.JavaScriptModule { *; }\n-keep class * extends com.facebook.react.bridge.NativeModule { *; }\n-keep class * extends expo.modules.core.ExportedModule { *; }\n-keep class * extends expo.modules.core.ViewManager { *; }"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "supabaseUrl": "https://frzwlctzomhborhcxukd.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyendsY3R6b21oYm9yaGN4dWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjkzNTMsImV4cCI6MjA5ODE0NTM1M30.efoxtO29POXKGKpRlzP_Mgd9wulRJpYZnUA5rJkNsPY",
+      "eas": {
+        "projectId": "bea98a3b-7822-4605-80ed-72e284f31126"
+      }
+    }
+  }
+}

@@ -11,8 +11,6 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: claude/beauty-salon-booking-app-ika6rf
 
       - uses: actions/setup-node@v4
         with:

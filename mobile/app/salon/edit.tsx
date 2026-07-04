@@ -37,6 +37,7 @@ export default function SalonEditScreen() {
   const [salonId, setSalonId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [targetGender, setTargetGender] = useState<"male" | "female" | "unisex">("unisex");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [bufferMinutes, setBufferMinutes] = useState("10");
@@ -68,6 +69,7 @@ export default function SalonEditScreen() {
         setSalonId(salon.id);
         setName(salon.name ?? "");
         setDescription(salon.description ?? "");
+        setTargetGender((salon.target_gender as "male" | "female" | "unisex") ?? "unisex");
         setPhone(salon.phone ?? "");
         setAddress(salon.address ?? "");
         setBufferMinutes(String(salon.buffer_time_minutes ?? 10));
@@ -183,6 +185,7 @@ export default function SalonEditScreen() {
       .update({
         name: name.trim(),
         description: description.trim() || null,
+        target_gender: targetGender,
         phone: phone.trim() || null,
         address: address.trim() || null,
         buffer_time_minutes: buffer,
@@ -273,6 +276,33 @@ export default function SalonEditScreen() {
                 numberOfLines={3}
                 textAlignVertical="top"
               />
+
+              <Text style={[styles.label, { color: colors.text }]}>Hedef Kitle</Text>
+              <View style={styles.rewardTypeRow}>
+                {(
+                  [
+                    { key: "male", label: "Erkek" },
+                    { key: "female", label: "Kadın" },
+                    { key: "unisex", label: "Unisex" },
+                  ] as const
+                ).map((s) => (
+                  <Pressable
+                    key={s.key}
+                    style={[
+                      styles.rewardTypeChip,
+                      {
+                        backgroundColor: targetGender === s.key ? colors.primary : colors.background,
+                        borderColor: targetGender === s.key ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setTargetGender(s.key)}
+                  >
+                    <Text style={{ color: targetGender === s.key ? "#fff" : colors.text, fontWeight: "600", fontSize: 13 }}>
+                      {s.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
 
               <Text style={[styles.label, { color: colors.text }]}>Telefon</Text>
               <TextInput

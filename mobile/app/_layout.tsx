@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Stack, router, useRootNavigationState } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
+import { createSessionFromUrl } from "@/lib/oauth";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { isExpoGo } from "@/lib/ads";
 import { supabase } from "@/lib/supabase";
@@ -96,7 +98,22 @@ export default function RootLayout() {
       if (session) loadProfile(session.user.id).catch(() => {});
     });
 
-    return () => subscription.subscription.unsubscribe();
+    // Deep link'ler: şifre sıfırlama ve OAuth dönüşleri token taşır.
+    async function handleAuthUrl(url: string | null) {
+      if (!url || (!url.includes("access_token") && !url.includes("code="))) return;
+      const result = await createSessionFromUrl(url);
+      if (!result.ok) return;
+      if (result.type === "recovery" || url.includes("reset-password")) {
+        router.push("/reset-password" as never);
+      }
+    }
+    const linkSub = Linking.addEventListener("url", ({ url }) => handleAuthUrl(url));
+    Linking.getInitialURL().then(handleAuthUrl).catch(() => {});
+
+    return () => {
+      subscription.subscription.unsubscribe();
+      linkSub.remove();
+    };
   }, []);
 
   // Navigator mount olduktan SONRA yönlendir; erken router.replace() exception fırlatır.

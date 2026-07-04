@@ -426,6 +426,18 @@ function DiscoverScreen() {
                 </Pressable>
               ))}
             </View>
+
+            <Pressable
+              style={[styles.guideBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "44" }]}
+              onPress={() => router.push("/style-guide" as never)}
+            >
+              <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+              <Text style={[styles.guideBannerText, { color: colors.text }]}>
+                <Text style={{ fontWeight: "800", color: colors.primary }}>Stil Rehberi</Text> — yüz tipine göre
+                kesim ve tasarım önerileri
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </Pressable>
           </View>
         }
         renderItem={({ item }) => {
@@ -608,6 +620,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   segmentBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  guideBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 10,
+  },
+  guideBannerText: { flex: 1, fontSize: 13, lineHeight: 18 },
   availabilityText: { fontSize: 13, fontWeight: "600", flex: 1 },
   map: { width: "100%", height: 140, borderRadius: 14, marginTop: 2 },
   bookButton: {

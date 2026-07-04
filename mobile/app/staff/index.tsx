@@ -21,7 +21,6 @@ interface StaffMember {
   user_id: string;
   full_name: string | null;
   phone: string | null;
-  email: string | null;
 }
 
 export default function StaffScreen() {
@@ -70,7 +69,6 @@ export default function StaffScreen() {
         user_id: r.user_id,
         full_name: r.users?.full_name ?? null,
         phone: r.users?.phone ?? null,
-        email: null,
       }));
       setStaff(mapped);
     } finally {

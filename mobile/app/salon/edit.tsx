@@ -181,16 +181,8 @@ export default function SalonEditScreen() {
         .upload(path, bytes.buffer as ArrayBuffer, { contentType: "image/jpeg", upsert: true });
 
       if (uploadError) {
-        const bucketMissing = /bucket|not found/i.test(uploadError.message ?? "");
-        const noPermission = /security|policy|unauthorized|row-level/i.test(uploadError.message ?? "");
-        Alert.alert(
-          "Yüklenemedi",
-          bucketMissing
-            ? "Depolama alanı henüz yapılandırılmamış (salon-photos bucket'ı eksik)."
-            : noPermission
-              ? "Depolama izni eksik: salon-photos bucket'ına yükleme policy'si tanımlanmalı."
-              : `Fotoğraf yüklenirken bir hata oluştu.\n\n${uploadError.message}`
-        );
+        // Ham hata her zaman gösterilir: teşhis tahmine dönmesin.
+        Alert.alert("Yüklenemedi", `Fotoğraf yüklenemedi:\n\n${uploadError.message}`);
         return;
       }
 

@@ -19,7 +19,9 @@ const PRESETS = [
 export default function NewCampaignScreen() {
   const user = useAuthStore((s) => s.user);
   const colors = useThemeStore((s) => s.colors);
-  const isBarber = user?.role === "barber" || user?.role === "salon_owner";
+  // Kampanya kaydı RLS gereği yalnızca salon SAHİBİ tarafından eklenebilir
+  // (campaigns_manage_owner); berber rolüne açmak yanıltıcı hata üretiyordu.
+  const isBarber = user?.role === "salon_owner";
 
   const [barberId, setBarberId] = useState<string | null>(null);
   const [salonId, setSalonId] = useState<string | null>(null);
@@ -53,32 +55,13 @@ export default function NewCampaignScreen() {
 
   async function fetchRecipientTokens(): Promise<string[]> {
     if (!barberId) return [];
-    let customerIds: string[] = [];
-
-    if (target === "favorites") {
-      const { data } = await supabase
-        .from("favorite_barbers")
-        .select("customer_id")
-        .eq("barber_id", barberId);
-      customerIds = ((data as { customer_id: string }[]) ?? []).map((r) => r.customer_id);
-    } else {
-      const { data } = await supabase
-        .from("appointments")
-        .select("customer_id")
-        .eq("barber_id", barberId)
-        .not("customer_id", "is", null);
-      customerIds = [
-        ...new Set(((data as { customer_id: string }[]) ?? []).map((r) => r.customer_id)),
-      ];
-    }
-
-    if (customerIds.length === 0) return [];
-
-    const { data: tokens } = await supabase
-      .from("push_tokens")
-      .select("token")
-      .in("user_id", customerIds);
-    return [...new Set(((tokens as { token: string }[]) ?? []).map((r) => r.token))];
+    // push_tokens RLS'i başka kullanıcıların token'larını okutmaz; token'lar
+    // yalnızca salon sahibine açık security definer RPC ile alınır (0018).
+    const { data, error } = await supabase.rpc("get_campaign_push_tokens", {
+      p_target: target,
+    });
+    if (error) return [];
+    return [...new Set(((data as { token: string }[]) ?? []).map((r) => r.token))];
   }
 
   async function handleSend() {
@@ -124,6 +107,19 @@ export default function NewCampaignScreen() {
 
     setIsSending(true);
     try {
+      // Önce alıcı kontrolü: alıcı yoksa kampanya kaydı açılmaz (aksi halde
+      // hiç gönderilmemiş kampanya hız limitini tüketiyordu).
+      const tokens = await fetchRecipientTokens();
+      if (tokens.length === 0) {
+        Alert.alert(
+          "Alıcı Yok",
+          target === "favorites"
+            ? "Seni favorilerine ekleyen ve bildirime açık müşteri bulunamadı."
+            : "Bildirime açık geçmiş müşteri bulunamadı."
+        );
+        return;
+      }
+
       const { error: insertError } = await supabase.from("campaigns").insert({
         salon_id: salonId,
         title: title.trim(),
@@ -132,17 +128,13 @@ export default function NewCampaignScreen() {
         sent_at: new Date().toISOString(),
       });
       if (insertError) {
-        Alert.alert("Gönderilemedi", "Kampanya kaydedilirken bir hata oluştu.");
-        return;
-      }
-
-      const tokens = await fetchRecipientTokens();
-      if (tokens.length === 0) {
+        // Sunucu tarafı hız limiti (0018) gerçek nedeni mesajda döndürür.
+        const isRateLimit = /campaign_rate_limit/.test(insertError.message ?? "");
         Alert.alert(
-          "Alıcı Yok",
-          target === "favorites"
-            ? "Seni favorilerine ekleyen ve bildirime açık müşteri bulunamadı."
-            : "Bildirime açık geçmiş müşteri bulunamadı."
+          "Gönderilemedi",
+          isRateLimit
+            ? insertError.message.replace(/^.*campaign_rate_limit:\s*/, "")
+            : `Kampanya kaydedilirken bir hata oluştu.\n\n${insertError.message}`
         );
         return;
       }
@@ -181,7 +173,7 @@ export default function NewCampaignScreen() {
         <Stack.Screen options={{ headerShown: true, title: "Bildirim Gönder" }} />
         <Ionicons name="lock-closed-outline" size={40} color={colors.textMuted} />
         <Text style={[styles.infoText, { color: colors.textMuted }]}>
-          Bu sayfa yalnızca berberler içindir.
+          Bu sayfa yalnızca salon sahipleri içindir.
         </Text>
       </View>
     );

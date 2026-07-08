@@ -33,6 +33,10 @@ if (!isExpoGo) {
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  // Deep link ile gelen auth yönlendirmesi (örn. şifre sıfırlama) navigator
+  // hazır olana ve açılış yönlendirmesi yapılana kadar bekletilir; yoksa
+  // router.replace(initialRoute) bu ekranı eziyor ya da erken push exception atıyordu.
+  const [pendingAuthRoute, setPendingAuthRoute] = useState<string | null>(null);
   const rootNavigationState = useRootNavigationState();
   const setSession = useAuthStore((s) => s.setSession);
   const setUser = useAuthStore((s) => s.setUser);
@@ -104,7 +108,7 @@ export default function RootLayout() {
       const result = await createSessionFromUrl(url);
       if (!result.ok) return;
       if (result.type === "recovery" || url.includes("reset-password")) {
-        router.push("/reset-password" as never);
+        setPendingAuthRoute("/reset-password");
       }
     }
     const linkSub = Linking.addEventListener("url", ({ url }) => handleAuthUrl(url));
@@ -126,6 +130,18 @@ export default function RootLayout() {
     }
     setInitialRoute(null);
   }, [rootNavigationState?.key, initialRoute]);
+
+  // Bekleyen auth yönlendirmesi: navigator hazır ve açılış yönlendirmesi
+  // tamamlandıktan sonra uygulanır (initialRoute tüketilmiş olmalı).
+  useEffect(() => {
+    if (!rootNavigationState?.key || !pendingAuthRoute || !isReady || initialRoute) return;
+    try {
+      router.push(pendingAuthRoute as never);
+    } catch (e) {
+      console.warn("auth redirect failed", e);
+    }
+    setPendingAuthRoute(null);
+  }, [rootNavigationState?.key, pendingAuthRoute, initialRoute, isReady]);
 
   return (
     <>

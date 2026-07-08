@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
+import { TimeField } from "@/components/TimeField";
 
 const TIME_REGEX = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
@@ -393,23 +394,9 @@ export default function SalonEditScreen() {
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
               <Text style={[styles.label, { color: colors.text }]}>Çalışma Saatleri</Text>
               <View style={styles.timeRow}>
-                <TextInput
-                  style={[styles.input, styles.timeInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                  value={startTime}
-                  onChangeText={setStartTime}
-                  placeholder="09:00"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={5}
-                />
+                <TimeField value={startTime} onChange={setStartTime} style={{ flex: 1 }} />
                 <Text style={{ color: colors.textMuted }}>—</Text>
-                <TextInput
-                  style={[styles.input, styles.timeInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-                  value={endTime}
-                  onChangeText={setEndTime}
-                  placeholder="20:00"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={5}
-                />
+                <TimeField value={endTime} onChange={setEndTime} style={{ flex: 1 }} />
               </View>
 
               <Text style={[styles.label, { color: colors.text }]}>Tampon Süre (dakika)</Text>
@@ -561,22 +548,8 @@ export default function SalonEditScreen() {
               </ScrollView>
 
               <View style={{ flexDirection: "row", gap: 8 }}>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
-                  value={discountStart}
-                  onChangeText={setDiscountStart}
-                  placeholder="13:00"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={5}
-                />
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
-                  value={discountEnd}
-                  onChangeText={setDiscountEnd}
-                  placeholder="16:00"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={5}
-                />
+                <TimeField value={discountStart} onChange={setDiscountStart} style={{ flex: 1 }} />
+                <TimeField value={discountEnd} onChange={setDiscountEnd} style={{ flex: 1 }} />
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, width: 70 }]}
                   value={discountPercent}

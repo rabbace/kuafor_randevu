@@ -68,6 +68,7 @@ export default function BookingScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [barber, setBarber] = useState<BarberWithMeta | null>(null);
+  const [staffList, setStaffList] = useState<BarberWithMeta[]>([]);
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
@@ -166,7 +167,7 @@ export default function BookingScreen() {
         }
         setBarber(barberRow as unknown as BarberWithMeta);
 
-        const [salonRes, servicesRes, schedulesRes, discountsRes] = await Promise.all([
+        const [salonRes, servicesRes, schedulesRes, discountsRes, staffRes] = await Promise.all([
           supabase.from("salons").select("*").eq("id", barberRow.salon_id).maybeSingle(),
           supabase
             .from("services")
@@ -180,12 +181,19 @@ export default function BookingScreen() {
             .select("day_of_week, start_time, end_time, discount_percent")
             .eq("salon_id", barberRow.salon_id)
             .eq("is_active", true),
+          // Salonun tüm çalışanları: müşteri istediği uzmanı seçebilsin.
+          supabase
+            .from("barbers")
+            .select("*, user:users!barbers_user_id_fkey(full_name)")
+            .eq("salon_id", barberRow.salon_id)
+            .eq("is_active", true),
         ]);
 
         setSalon((salonRes.data as Salon) ?? null);
         setServices((servicesRes.data as Service[]) ?? []);
         setSchedules((schedulesRes.data as BarberSchedule[]) ?? []);
         setDiscounts((discountsRes.data as SalonDiscount[]) ?? []);
+        setStaffList(((staffRes.data ?? []) as unknown as BarberWithMeta[]));
       } catch {
         Alert.alert("Hata", "Bilgiler yüklenirken bir sorun oluştu.");
       } finally {
@@ -194,6 +202,18 @@ export default function BookingScreen() {
     }
     load();
   }, [barberId]);
+
+  // Müşteri başka bir çalışanı seçince o çalışanın takvimi yüklenir.
+  async function switchStaff(staff: BarberWithMeta) {
+    if (staff.id === barber?.id) return;
+    setSelectedSlot(null);
+    setBarber(staff);
+    const { data: sched } = await supabase
+      .from("barber_schedules")
+      .select("*")
+      .eq("barber_id", staff.id);
+    setSchedules((sched as BarberSchedule[]) ?? []);
+  }
 
   const loadDayAppointments = useCallback(async () => {
     if (!barber) return;
@@ -370,6 +390,39 @@ export default function BookingScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {staffList.length > 1 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Uzman Seç</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {staffList.map((staff) => {
+                const active = staff.id === barber?.id;
+                return (
+                  <Pressable
+                    key={staff.id}
+                    style={[
+                      styles.staffChip,
+                      {
+                        backgroundColor: active ? colors.primary : colors.surface,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => switchStaff(staff)}
+                  >
+                    <View style={[styles.staffAvatar, { backgroundColor: active ? "rgba(255,255,255,0.25)" : colors.primary + "1A" }]}>
+                      <Text style={{ color: active ? "#fff" : colors.primary, fontWeight: "800", fontSize: 13 }}>
+                        {(staff.user?.full_name ?? "?")[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={{ color: active ? "#fff" : colors.text, fontWeight: "600", fontSize: 13 }}>
+                      {staff.user?.full_name ?? "Uzman"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmet Seç</Text>
         {services.length === 0 ? (
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
@@ -569,6 +622,16 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 13, marginTop: 1 },
   content: { padding: 24, paddingTop: 18, paddingBottom: 24, gap: 4 },
   sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: 16, marginBottom: 10 },
+  staffChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  staffAvatar: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   emptyText: { fontSize: 13, fontStyle: "italic" },
   serviceList: { gap: 10 },
   multiHint: { fontSize: 12, lineHeight: 17 },

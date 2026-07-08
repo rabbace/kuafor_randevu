@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Pressable } from "react-native";
 import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { TimeField } from "@/components/TimeField";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -164,22 +165,16 @@ export default function ScheduleScreen() {
 
                 {!row.is_off && (
                   <View style={styles.timeRow}>
-                    <TextInput
-                      style={[styles.timeInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                    <TimeField
                       value={row.start_time}
-                      onChangeText={(t) => updateRow(row.day_of_week, { start_time: t })}
-                      placeholder="09:00"
-                      placeholderTextColor={colors.textMuted}
-                      maxLength={5}
+                      onChange={(t) => updateRow(row.day_of_week, { start_time: t })}
+                      style={{ flex: 1 }}
                     />
                     <Text style={{ color: colors.textMuted }}>—</Text>
-                    <TextInput
-                      style={[styles.timeInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+                    <TimeField
                       value={row.end_time}
-                      onChangeText={(t) => updateRow(row.day_of_week, { end_time: t })}
-                      placeholder="18:00"
-                      placeholderTextColor={colors.textMuted}
-                      maxLength={5}
+                      onChange={(t) => updateRow(row.day_of_week, { end_time: t })}
+                      style={{ flex: 1 }}
                     />
                   </View>
                 )}

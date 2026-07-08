@@ -33,7 +33,6 @@ export default function StaffScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchEmail, setSearchEmail] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResult, setSearchResult] = useState<{ barberId: string; name: string } | null>(null);
   const [searchError, setSearchError] = useState("");
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export default function StaffScreen() {
   async function handleAdd() {
     if (!searchEmail.trim()) return;
     setIsSearching(true);
-    setSearchResult(null);
     setSearchError("");
     try {
       const { data, error } = await supabase.rpc("assign_barber_by_phone", {
@@ -165,7 +163,7 @@ export default function StaffScreen() {
             <TextInput
               style={[styles.searchInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text, flex: 1 }]}
               value={searchEmail}
-              onChangeText={(t) => { setSearchEmail(t); setSearchResult(null); setSearchError(""); }}
+              onChangeText={(t) => { setSearchEmail(t); setSearchError(""); }}
               placeholder="Telefon numarası (05xx...)"
               placeholderTextColor={colors.textMuted}
               keyboardType="phone-pad"

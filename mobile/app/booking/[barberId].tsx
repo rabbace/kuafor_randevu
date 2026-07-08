@@ -106,7 +106,9 @@ export default function BookingScreen() {
   }) | null;
   const rewardType = salonLoyalty?.loyalty_reward_type ?? "discount";
   const rewardText = salonLoyalty?.loyalty_reward_text ?? null;
-  const redeemValue = salonLoyalty?.loyalty_redeem_amount ?? 20;
+  // 0 veya negatif tanımlanmışsa varsayılana dön (0'a bölme/sonsuz döngü koruması).
+  const rawRedeem = salonLoyalty?.loyalty_redeem_amount ?? 20;
+  const redeemValue = rawRedeem > 0 ? rawRedeem : 20;
   // Sakin saat indirimi: seçili slota denk gelen pencere varsa uygulanır.
   const slotDiscountPercent = selectedSlot ? discountForSlot(discounts, selectedSlot.start) : 0;
   const slotDiscountAmount = Math.round((totalPrice * slotDiscountPercent) / 100);
@@ -128,6 +130,13 @@ export default function BookingScreen() {
   }, [loyaltyPoints, priceAfterSlotDiscount, redeemValue, rewardType]);
   const canRedeem =
     loyaltyPoints >= 100 && (rewardType === "custom" ? !!rewardText : maxDiscount > 0);
+
+  // Seçimler değişip puan kullanımı geçersiz kalırsa işareti kaldır
+  // (gizli kalan onay kutusuyla puan düşülmesin).
+  useEffect(() => {
+    if (!canRedeem && usePoints) setUsePoints(false);
+  }, [canRedeem, usePoints]);
+
   const discount = usePoints && rewardType === "discount" ? maxDiscount : 0;
   const finalPrice = Math.max(0, priceAfterSlotDiscount - discount);
 
@@ -285,24 +294,41 @@ export default function BookingScreen() {
         return;
       }
 
-      // Sadakat puanı hareketleri: yalnızca puan kullanımı kaydedilir.
-      // Kazanım, randevu "completed" olduğunda DB trigger tarafından işlenir.
-      try {
-        if (usePoints && pointsToRedeem > 0) {
-          const appointmentId = created?.id ?? null;
-          await supabase.from("loyalty_transactions").insert({
-            customer_id: user.id,
-            salon_id: salon.id,
-            points_change: -pointsToRedeem,
-            reason:
-              rewardType === "custom" && rewardText
-                ? `Ödül kullanıldı: ${rewardText}`
-                : "Randevuda indirim kullanıldı",
-            appointment_id: appointmentId,
-          });
+      // Sadakat puanı kullanımı: sunucu tarafında RPC ile işlenir (bakiye
+      // kontrolü + puan düşümü, migration 0018). Kazanım, randevu "completed"
+      // olduğunda DB trigger tarafından işlenir.
+      if (usePoints && canRedeem && pointsToRedeem > 0) {
+        try {
+          const { data: redeemRes, error: redeemErr } = await supabase.rpc(
+            "redeem_loyalty_points",
+            {
+              p_salon_id: salon.id,
+              p_points: pointsToRedeem,
+              p_reason:
+                rewardType === "custom" && rewardText
+                  ? `Ödül kullanıldı: ${rewardText}`
+                  : "Randevuda indirim kullanıldı",
+              p_appointment_id: created?.id ?? null,
+            }
+          );
+          const redeemOk = !redeemErr && (redeemRes as { ok?: boolean } | null)?.ok === true;
+          if (!redeemOk) {
+            // Puan düşülemedi: randevu fiyatını indirimsiz tutara geri çek
+            // ve kullanıcıyı bilgilendir (indirim uygulanmadı).
+            if (discount > 0 && created?.id) {
+              await supabase
+                .from("appointments")
+                .update({ total_price: priceAfterSlotDiscount })
+                .eq("id", created.id);
+            }
+            Alert.alert(
+              "Puan Kullanılamadı",
+              "Randevun alındı ancak sadakat puanların kullanılamadı; indirim uygulanmadı. Puan bakiyeni kontrol et."
+            );
+          }
+        } catch {
+          // Puan işlemi başarısız olsa da randevu akışını bozma.
         }
-      } catch {
-        // Puan işlemi başarısız olsa da randevu akışını bozma.
       }
 
       Alert.alert(

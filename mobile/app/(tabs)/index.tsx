@@ -93,6 +93,8 @@ function DiscoverScreen() {
       .from("barbers")
       .select("*, user:users!barbers_user_id_fkey(full_name), salon:salons(name, photo_url, target_gender)")
       .eq("is_active", true)
+      // Salona atanmamış berberler keşfette listelenmez (randevu ekranı salon ister).
+      .not("salon_id", "is", null)
       .then(({ data }) => {
         setBarbers((data ?? []) as unknown as BarberWithMeta[]);
         setIsLoading(false);

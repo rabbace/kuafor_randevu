@@ -77,6 +77,10 @@ export function BarberDashboard() {
   const [barber, setBarber] = useState<BarberWithSalon | null>(null);
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([]);
   const [schedules, setSchedules] = useState<BarberSchedule[]>([]);
+  const [ratingSummary, setRatingSummary] = useState<{ avg: number; total: number } | null>(null);
+  const [recentReviews, setRecentReviews] = useState<
+    { id: string; rating: number; comment: string | null; created_at: string }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDayKey, setSelectedDayKey] = useState(() => toDateKey(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -124,6 +128,30 @@ export function BarberDashboard() {
     setAppointments((apptsRes.data ?? []) as AppointmentWithService[]);
     setSchedules((schedulesRes.data ?? []) as BarberSchedule[]);
     setIsLoading(false);
+
+    // Değerlendirme özeti (ikincil: hata olursa dashboard etkilenmez).
+    try {
+      const barberId = (barberRow as BarberWithSalon).id;
+      const [{ data: avgRow }, { data: reviews }] = await Promise.all([
+        supabase
+          .from("barber_avg_ratings")
+          .select("avg_rating, total_ratings")
+          .eq("barber_id", barberId)
+          .maybeSingle(),
+        supabase
+          .from("barber_ratings")
+          .select("id, rating, comment, created_at")
+          .eq("barber_id", barberId)
+          .order("created_at", { ascending: false })
+          .limit(3),
+      ]);
+      setRatingSummary(
+        avgRow ? { avg: Number(avgRow.avg_rating), total: Number(avgRow.total_ratings) } : null
+      );
+      setRecentReviews((reviews as typeof recentReviews) ?? []);
+    } catch {
+      // Görünüm henüz yoksa sessizce geç.
+    }
   }, [user?.id, visibleMonth.year, visibleMonth.month]);
 
   useEffect(() => {
@@ -265,7 +293,48 @@ export function BarberDashboard() {
         {barber.salons.city ? (
           <Text style={[styles.salonBadgeCity, { color: colors.textMuted }]}>· {barber.salons.city}</Text>
         ) : null}
+        {ratingSummary && ratingSummary.total > 0 && (
+          <View style={styles.badgeRating}>
+            <Ionicons name="star" size={13} color="#F59E0B" />
+            <Text style={{ color: colors.text, fontWeight: "800", fontSize: 13 }}>
+              {ratingSummary.avg.toFixed(1)}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>({ratingSummary.total})</Text>
+          </View>
+        )}
       </View>
+
+      {/* Son değerlendirmeler */}
+      {recentReviews.length > 0 && (
+        <View style={[styles.reviewsCard, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
+            <Text style={{ color: colors.text, fontWeight: "800", fontSize: 14 }}>Son Değerlendirmeler</Text>
+          </View>
+          {recentReviews.map((r) => (
+            <View key={r.id} style={[styles.reviewRow, { borderColor: colors.border }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Ionicons
+                    key={i}
+                    name={i <= r.rating ? "star" : "star-outline"}
+                    size={13}
+                    color="#F59E0B"
+                  />
+                ))}
+                <Text style={{ color: colors.textMuted, fontSize: 11, marginLeft: 6 }}>
+                  {new Date(r.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}
+                </Text>
+              </View>
+              {r.comment ? (
+                <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+                  {r.comment}
+                </Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Stats */}
       <LinearGradient colors={colors.gradient} style={[styles.statsCard, cardShadow]}>
@@ -470,6 +539,9 @@ const styles = StyleSheet.create({
   },
   salonBadgeText: { fontWeight: "700", fontSize: 14, flex: 1 },
   salonBadgeCity: { fontSize: 13 },
+  badgeRating: { flexDirection: "row", alignItems: "center", gap: 4 },
+  reviewsCard: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
+  reviewRow: { borderTopWidth: 1, paddingTop: 8, gap: 4 },
   emptyDay: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: 4 },

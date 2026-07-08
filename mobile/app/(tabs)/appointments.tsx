@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const DateTimePicker = require("@react-native-community/datetimepicker").default;
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { cardShadow } from "@/theme/shadows";
@@ -144,6 +144,14 @@ export default function AppointmentsScreen() {
   useEffect(() => {
     loadAppointments();
   }, [user?.id]);
+
+  // Ekrana her dönüşte yenile: değerlendirme sonrası "Değerlendir" butonu
+  // anında "Değerlendirildi"ye dönsün.
+  useFocusEffect(
+    useCallback(() => {
+      loadAppointments();
+    }, [user?.id])
+  );
 
   async function updateStatus(appointmentId: string, status: string) {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);

@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { cardShadow } from "@/theme/shadows";
 import { supabase } from "@/lib/supabase";
+import { STATUS_NOTIFICATIONS, notifyAppointmentParty } from "@/lib/notify";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { AdBanner } from "@/components/ads/AdBanner";
@@ -156,9 +157,12 @@ export default function AppointmentsScreen() {
   async function updateStatus(appointmentId: string, status: string) {
     const { error } = await supabase.from("appointments").update({ status }).eq("id", appointmentId);
     if (error) {
-      Alert.alert("Güncellenemedi", "Randevu durumu güncellenirken bir hata oluştu.");
+      Alert.alert("Güncellenemedi", `Randevu durumu güncellenirken bir hata oluştu.\n\n${error.message}`);
       return;
     }
+    // Karşı tarafa anlık bildirim (fire-and-forget).
+    const notif = STATUS_NOTIFICATIONS[status];
+    if (notif) notifyAppointmentParty(appointmentId, notif.title, notif.body);
     loadAppointments();
   }
 

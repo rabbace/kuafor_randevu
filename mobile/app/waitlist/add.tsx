@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DateTimePicker = require("@react-native-community/datetimepicker").default;
+import { TimeField } from "@/components/TimeField";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
-
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 interface BarberOption {
   id: string;
@@ -30,9 +31,18 @@ export default function WaitlistAddScreen() {
   const [barbers, setBarbers] = useState<BarberOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [selectedBarber, setSelectedBarber] = useState<BarberOption | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [date, setDate] = useState("");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [date, setDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("20:00");
   const [isSaving, setIsSaving] = useState(false);
+
+  function toggleService(id: string) {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
 
   useEffect(() => {
     async function loadBarbers() {
@@ -49,7 +59,7 @@ export default function WaitlistAddScreen() {
     async function loadServices() {
       if (!selectedBarber) {
         setServices([]);
-        setSelectedServiceId(null);
+        setSelectedServiceIds([]);
         return;
       }
       const { data } = await supabase
@@ -58,7 +68,7 @@ export default function WaitlistAddScreen() {
         .eq("salon_id", selectedBarber.salon_id)
         .eq("is_active", true);
       setServices((data as ServiceOption[]) ?? []);
-      setSelectedServiceId(null);
+      setSelectedServiceIds([]);
     }
     loadServices();
   }, [selectedBarber?.id]);
@@ -69,27 +79,39 @@ export default function WaitlistAddScreen() {
       Alert.alert("Eksik Bilgi", "Lütfen bir berber seç.");
       return;
     }
-    if (!selectedServiceId) {
-      Alert.alert("Eksik Bilgi", "Lütfen bir hizmet seç.");
+    if (selectedServiceIds.length === 0) {
+      Alert.alert("Eksik Bilgi", "Lütfen en az bir hizmet seç.");
       return;
     }
-    const trimmed = date.trim();
-    if (!DATE_REGEX.test(trimmed) || Number.isNaN(new Date(trimmed + "T00:00:00").getTime())) {
-      Alert.alert("Geçersiz Tarih", "Tarihi 'YYYY-AA-GG' biçiminde gir (örn. 2026-07-15).");
+    if (!date) {
+      Alert.alert("Eksik Bilgi", "Lütfen bir tarih seç.");
       return;
     }
-    if (new Date(trimmed + "T23:59:59").getTime() < Date.now()) {
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    if (dayEnd.getTime() < Date.now()) {
       Alert.alert("Geçersiz Tarih", "Geçmiş bir tarih için bekleme listesine giremezsin.");
       return;
     }
+    if (startTime >= endTime) {
+      Alert.alert("Geçersiz Saat", "Bitiş saati başlangıçtan sonra olmalı.");
+      return;
+    }
+
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
 
     setIsSaving(true);
     const { error } = await supabase.from("waitlist").insert({
       customer_id: user.id,
       salon_id: selectedBarber.salon_id,
       barber_id: selectedBarber.id,
-      service_id: selectedServiceId,
-      desired_date: trimmed,
+      service_id: selectedServiceIds[0],
+      service_ids: selectedServiceIds,
+      desired_date: `${y}-${m}-${d}`,
+      desired_start_time: startTime,
+      desired_end_time: endTime,
     });
     setIsSaving(false);
 
@@ -141,7 +163,7 @@ export default function WaitlistAddScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmet Seç</Text>
             <View style={styles.chipWrap}>
               {services.map((s) => {
-                const active = selectedServiceId === s.id;
+                const active = selectedServiceIds.includes(s.id);
                 return (
                   <Pressable
                     key={s.id}
@@ -150,10 +172,18 @@ export default function WaitlistAddScreen() {
                       {
                         backgroundColor: active ? colors.primary : colors.background,
                         borderColor: active ? colors.primary : colors.border,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
                       },
                     ]}
-                    onPress={() => setSelectedServiceId(s.id)}
+                    onPress={() => toggleService(s.id)}
                   >
+                    <Ionicons
+                      name={active ? "checkbox" : "square-outline"}
+                      size={15}
+                      color={active ? "#fff" : colors.textMuted}
+                    />
                     <Text style={{ color: active ? "#fff" : colors.text, fontSize: 13 }}>
                       {s.name} · {s.price} TL
                     </Text>
@@ -168,15 +198,38 @@ export default function WaitlistAddScreen() {
         )}
 
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }, cardShadow]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>İstenen Tarih</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
-            placeholder="YYYY-AA-GG (örn. 2026-07-15)"
-            placeholderTextColor={colors.textMuted}
-            value={date}
-            onChangeText={setDate}
-            maxLength={10}
-          />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>İstenen Tarih ve Saat Aralığı</Text>
+          <Pressable
+            style={[styles.input, styles.dateButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+            <Text style={{ color: date ? colors.text : colors.textMuted, fontSize: 15, fontWeight: "600" }}>
+              {date
+                ? date.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric", weekday: "long" })
+                : "Tarih seç"}
+            </Text>
+          </Pressable>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date ?? new Date()}
+              mode="date"
+              minimumDate={new Date()}
+              onChange={(_e: unknown, d?: Date) => {
+                setShowDatePicker(false);
+                if (d) setDate(d);
+              }}
+            />
+          )}
+
+          <Text style={[styles.hintLabel, { color: colors.textMuted }]}>
+            Hangi saatler arasında uygunsun?
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <TimeField value={startTime} onChange={setStartTime} style={{ flex: 1 }} />
+            <Text style={{ color: colors.textMuted }}>—</Text>
+            <TimeField value={endTime} onChange={setEndTime} style={{ flex: 1 }} />
+          </View>
         </View>
 
         <Pressable
@@ -199,6 +252,8 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  dateButton: { flexDirection: "row", alignItems: "center", gap: 8 },
+  hintLabel: { fontSize: 12, marginTop: 2 },
   submitButton: {
     flexDirection: "row",
     gap: 8,

@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "@/lib/supabase";
+import { notifyAppointmentParty } from "@/lib/notify";
 import { generateDailySlots, type TimeSlot } from "@/lib/slotCalculator";
 import { SlotPicker } from "@/components/booking/SlotPicker";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -349,6 +350,16 @@ export default function BookingScreen() {
         } catch {
           // Puan işlemi başarısız olsa da randevu akışını bozma.
         }
+      }
+
+      // Berbere anlık bildirim (fire-and-forget).
+      if (created?.id) {
+        const timeLabel = selectedSlot.start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+        notifyAppointmentParty(
+          created.id,
+          "Yeni Randevu Talebi 📅",
+          `${user.fullName ?? "Bir müşteri"} — ${timeLabel} için randevu istiyor. Onaylamak için uygulamayı aç.`
+        );
       }
 
       Alert.alert(

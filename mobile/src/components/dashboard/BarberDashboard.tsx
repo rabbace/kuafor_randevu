@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { supabase } from "@/lib/supabase";
+import { STATUS_NOTIFICATIONS, notifyAppointmentParty } from "@/lib/notify";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cardShadow } from "@/theme/shadows";
@@ -230,6 +231,8 @@ export function BarberDashboard() {
       Alert.alert("Güncellenemedi", `Randevu durumu güncellenirken bir hata oluştu.\n\n${error.message}`);
       return;
     }
+    const notif = STATUS_NOTIFICATIONS[status];
+    if (notif) notifyAppointmentParty(appointmentId, notif.title, notif.body);
     loadData();
   }
 

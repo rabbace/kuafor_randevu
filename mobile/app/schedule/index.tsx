@@ -86,6 +86,17 @@ export default function ScheduleScreen() {
     setRows((prev) => prev.map((r) => (r.day_of_week === day ? { ...r, ...patch } : r)));
   }
 
+  // Bir günün saatlerini açık olan diğer tüm günlere uygular.
+  function copyToAllDays(source: DayRow) {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.is_off || r.day_of_week === source.day_of_week
+          ? r
+          : { ...r, start_time: source.start_time, end_time: source.end_time }
+      )
+    );
+  }
+
   async function handleSave() {
     if (!barberId) return;
 
@@ -176,6 +187,13 @@ export default function ScheduleScreen() {
                       onChange={(t) => updateRow(row.day_of_week, { end_time: t })}
                       style={{ flex: 1 }}
                     />
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => copyToAllDays(row)}
+                      style={[styles.copyButton, { borderColor: colors.border }]}
+                    >
+                      <Ionicons name="copy-outline" size={16} color={colors.primary} />
+                    </Pressable>
                   </View>
                 )}
               </View>
@@ -206,6 +224,7 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   switchLabel: { fontSize: 12, fontWeight: "600" },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  copyButton: { borderWidth: 1, borderRadius: 10, padding: 10 },
   timeInput: {
     flex: 1,
     borderWidth: 1,
